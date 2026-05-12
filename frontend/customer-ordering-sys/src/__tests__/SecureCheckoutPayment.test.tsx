@@ -4,7 +4,7 @@
  * Technologies: React Testing Library · Jest · MSW (msw/node)
  */
 
-import SecureCheckoutPayment from '../components/SecureCheckoutPayment';
+import SecureCheckoutPayment from '../pages/SecureCheckoutPayment';
 
 /**
  * ─────────────────────────────────────────────────────────────────────────
@@ -244,9 +244,9 @@ describe('REQ17 — Server-side price recalculation', () => {
   describe('SCN-06: parameterized price manipulation', () => {
     test.each([
       // [description,        manipulatedPrice, qty, dbPrice,  expectedServerTotal]
-      ['under-price attack',  0.01,              2,  75.00,    150.00],
-      ['over-price attack',   999999.00,         1,  85.00,     85.00],
-      ['negative price sent', -50.00,            3,  75.00,    225.00],
+      ['under-price attack', 0.01, 2, 75.00, 150.00],
+      ['over-price attack', 999999.00, 1, 85.00, 85.00],
+      ['negative price sent', -50.00, 3, 75.00, 225.00],
     ] as [string, number, number, number, number][])(
       '%s → server authorizes %f EGP',
       async (_label, manipulatedUnitPrice, qty, _dbPrice, expectedTotal) => {
@@ -289,7 +289,7 @@ describe('REQ18 — Character limit on free-text fields', () => {
     renderCheckout();
 
     const textarea = screen.getByTestId('special-instructions');
-    const counter  = screen.getByTestId('instructions-counter');
+    const counter = screen.getByTestId('instructions-counter');
 
     // Check native constraint
     expect(textarea).toHaveAttribute('maxLength', '500');
@@ -331,8 +331,8 @@ describe('REQ18 — Character limit on free-text fields', () => {
     test.each([
       ['special_instructions', 'special-instructions', 500, 200],
       ['special_instructions', 'special-instructions', 501, 422],
-      ['delivery_notes',       'delivery-notes',       500, 200],
-      ['delivery_notes',       'delivery-notes',       501, 422],
+      ['delivery_notes', 'delivery-notes', 500, 200],
+      ['delivery_notes', 'delivery-notes', 501, 422],
     ] as [string, string, number, number][])(
       '%s with %i chars → HTTP %i',
       async (fieldName, testId, inputLen, expectedStatus) => {
@@ -409,11 +409,11 @@ describe('REQ19 — Operating hours', () => {
 
     test.each([
       // [serverUtcHour, expectedStatus, shouldConfirm, description]
-      [ 9,  403, false, '09:00 → closed'],
-      [10,  200, true,  '10:00 → open (boundary)'],
-      [21,  200, true,  '21:00 → open'],
-      [22,  403, false, '22:00 → closed (boundary)'],
-      [ 3,  403, false, '03:00 → closed'],
+      [9, 403, false, '09:00 → closed'],
+      [10, 200, true, '10:00 → open (boundary)'],
+      [21, 200, true, '21:00 → open'],
+      [22, 403, false, '22:00 → closed (boundary)'],
+      [3, 403, false, '03:00 → closed'],
     ] as [number, number, boolean, string][])(
       '%s', async (serverUtcHour, _status, shouldConfirm) => {
         server.use(closedOpenHandler);
@@ -443,7 +443,7 @@ describe('REQ20 — Unavailable item', () => {
     renderCheckout({
       cartItems: [
         { id: 'I001', name: 'Classic Burger', qty: 2, price: 75.00 },
-        { id: 'I002', name: 'Crispy Fries',   qty: 1, price: 30.00 },
+        { id: 'I002', name: 'Crispy Fries', qty: 1, price: 30.00 },
       ],
     });
 
@@ -456,7 +456,7 @@ describe('REQ20 — Unavailable item', () => {
       <SecureCheckoutPayment
         cartItems={[
           { id: 'I001', name: 'Classic Burger', qty: 2, price: 75.00 },
-          { id: 'I002', name: 'Crispy Fries',   qty: 1, price: 30.00 },
+          { id: 'I002', name: 'Crispy Fries', qty: 1, price: 30.00 },
         ]}
       />
     );

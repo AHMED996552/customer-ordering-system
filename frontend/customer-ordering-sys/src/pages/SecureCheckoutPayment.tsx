@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 
-import DigitalCard from './DigitalCard';
-import PaymentForm from './PaymentForm';
-import OrderSummary from './OrderSummary';
-import DeliverySection from './DeliverySection';
+import DigitalCard from '../components/DigitalCard';
+import PaymentForm from '../components/PaymentForm';
+import OrderSummary from '../components/OrderSummary';
+import DeliverySection from '../components/DeliverySection';
 import { useCreditCardValidation } from '../hooks/useCreditCardValidation';
 import { useCharacterLimit } from '../hooks/useCharacterLimit';
 import { CartItem } from '../utils/checkout.utils';

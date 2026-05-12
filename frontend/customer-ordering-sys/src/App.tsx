@@ -1,6 +1,6 @@
 import React from 'react';
 import './App.css';
-import SecureCheckoutPayment from './components/SecureCheckoutPayment';
+import SecureCheckoutPayment from './pages/SecureCheckoutPayment';
 import Header from './components/Header';
 import Footer from './components/Footer';
 
@@ -20,8 +20,8 @@ function App() {
       <Header />
 
       <main className="max-w-container-max mx-auto px-md md:px-lg py-xl">
-        <SecureCheckoutPayment 
-          cartItems={CART_ITEMS} 
+        <SecureCheckoutPayment
+          cartItems={CART_ITEMS}
           onOrderConfirmed={handleOrderConfirmed}
         />
       </main>
