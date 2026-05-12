@@ -17,6 +17,13 @@ def checkout():
         raise APIError("BAD_REQUEST", "Invalid JSON payload", status_code=400)
 
     cart = session.get('cart', [])
+    if not cart and 'items' in payload:
+        cart = []
+        for item in payload['items']:
+            item_id = item.get('id') or item.get('item_id')
+            quantity = item.get('qty') or item.get('quantity', 0)
+            if item_id:
+                cart.append({'item_id': item_id, 'quantity': quantity})
 
     # Process via the atomic pipeline
     result = CheckoutService.process_checkout(cart, payload)

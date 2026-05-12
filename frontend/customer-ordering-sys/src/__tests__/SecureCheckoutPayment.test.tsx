@@ -113,7 +113,7 @@ function useSuccessHandler(
   capture?: (body: Record<string, unknown>) => void
 ) {
   server.use(
-    rest.post('/api/checkout', async (req, res, ctx) => {
+    rest.post('/api/v1/orders/checkout', async (req, res, ctx) => {
       const body = await req.json<Record<string, unknown>>();
       capture?.(body);
       return res(ctx.status(200), ctx.json(CONFIRMED_ORDER));
@@ -146,7 +146,7 @@ describe('Happy path & idempotency', () => {
   // SCN-02 ──────────────────────────────────────────────────────────────────
   it('SCN-02: gateway failure does NOT create an order and re-enables the button', async () => {
     server.use(
-      rest.post('/api/checkout', (_req, res, ctx) =>
+      rest.post('/api/v1/orders/checkout', (_req, res, ctx) =>
         res(ctx.status(402), ctx.json({ message: 'Payment declined' }))
       )
     );
@@ -165,7 +165,7 @@ describe('Happy path & idempotency', () => {
   it('SCN-03: button is disabled synchronously before HTTP dispatch', async () => {
     let resolveRequest!: () => void;
     server.use(
-      rest.post('/api/checkout', async (_req, res, ctx) => {
+      rest.post('/api/v1/orders/checkout', async (_req, res, ctx) => {
         await new Promise<void>(r => { resolveRequest = r; });
         return res(ctx.status(200), ctx.json(CONFIRMED_ORDER));
       })
@@ -191,7 +191,7 @@ describe('Happy path & idempotency', () => {
   it('SCN-04: three rapid clicks within 200ms produce exactly one POST', async () => {
     let callCount = 0;
     server.use(
-      rest.post('/api/checkout', async (_req, res, ctx) => {
+      rest.post('/api/v1/orders/checkout', async (_req, res, ctx) => {
         callCount++;
         return res(ctx.status(200), ctx.json(CONFIRMED_ORDER));
       })
@@ -218,7 +218,7 @@ describe('REQ17 — Server-side price recalculation', () => {
   it('SCN-05: server discards client total 0.01 EGP and uses correct 150.00 EGP', async () => {
     let receivedBody: Record<string, unknown> = {};
     server.use(
-      rest.post('/api/checkout', async (req, res, ctx) => {
+      rest.post('/api/v1/orders/checkout', async (req, res, ctx) => {
         receivedBody = await req.json<Record<string, unknown>>();
         // Server would ignore clientTotal and recalculate → respond with 150.00
         return res(ctx.status(200), ctx.json({ ...CONFIRMED_ORDER, total: 150.00 }));
@@ -252,7 +252,7 @@ describe('REQ17 — Server-side price recalculation', () => {
       async (_label, manipulatedUnitPrice, qty, _dbPrice, expectedTotal) => {
         let authorizedAmount = 0;
         server.use(
-          rest.post('/api/checkout', async (_req, res, ctx) => {
+          rest.post('/api/v1/orders/checkout', async (_req, res, ctx) => {
             // Simulated server: always uses DB price, ignores client price
             authorizedAmount = expectedTotal;
             return res(ctx.status(200), ctx.json({ ...CONFIRMED_ORDER, total: expectedTotal }));
@@ -282,7 +282,7 @@ describe('REQ18 — Character limit on free-text fields', () => {
   // SCN-07 ──────────────────────────────────────────────────────────────────
   it('SCN-07: Special Instructions textarea has maxLength=500 and counter updates', async () => {
     server.use(
-      rest.post('/api/checkout', (_req, res, ctx) =>
+      rest.post('/api/v1/orders/checkout', (_req, res, ctx) =>
         res(ctx.status(200), ctx.json(CONFIRMED_ORDER))
       )
     );
@@ -304,7 +304,7 @@ describe('REQ18 — Character limit on free-text fields', () => {
   // SCN-08 ──────────────────────────────────────────────────────────────────
   it('SCN-08: server rejects Special Instructions > 500 chars with HTTP 422', async () => {
     server.use(
-      rest.post('/api/checkout', async (req, res, ctx) => {
+      rest.post('/api/v1/orders/checkout', async (req, res, ctx) => {
         const body = await req.json<{ specialInstructions?: string }>();
         if ((body.specialInstructions?.length ?? 0) > 500) {
           return res(ctx.status(422), ctx.json({ message: 'Input too long' }));
@@ -337,7 +337,7 @@ describe('REQ18 — Character limit on free-text fields', () => {
       '%s with %i chars → HTTP %i',
       async (fieldName, testId, inputLen, expectedStatus) => {
         server.use(
-          rest.post('/api/checkout', async (req, res, ctx) => {
+          rest.post('/api/v1/orders/checkout', async (req, res, ctx) => {
             const body = await req.json<Record<string, string>>();
             const fieldValue = body[fieldName] ?? '';
             if (fieldValue.length > 500) {
@@ -372,7 +372,7 @@ describe('REQ19 — Operating hours', () => {
   // SCN-10 ──────────────────────────────────────────────────────────────────
   it('SCN-10: checkout rejected at server UTC 03:00 even when client clock shows 14:00', async () => {
     server.use(
-      rest.post('/api/checkout', async (req, res, ctx) => {
+      rest.post('/api/v1/orders/checkout', async (req, res, ctx) => {
         const body = await req.json<{ serverUtcHour: number }>();
         if (body.serverUtcHour < 10 || body.serverUtcHour >= 22) {
           return res(
@@ -398,7 +398,7 @@ describe('REQ19 — Operating hours', () => {
 
   // SCN-11 ──────────────────────────────────────────────────────────────────
   describe('SCN-11: operating hours boundary sweep', () => {
-    const closedOpenHandler = rest.post('/api/checkout', async (req, res, ctx) => {
+    const closedOpenHandler = rest.post('/api/v1/orders/checkout', async (req, res, ctx) => {
       const body = await req.json<{ serverUtcHour: number }>();
       const { serverUtcHour: h } = body;
       if (h < 10 || h >= 22) {
@@ -475,7 +475,7 @@ describe('REQ20 — Unavailable item', () => {
   // SCN-13 ──────────────────────────────────────────────────────────────────
   it('SCN-13: server rejects checkout with HTTP 422 even when UI check is bypassed', async () => {
     server.use(
-      rest.post('/api/checkout', async (req, res, ctx) => {
+      rest.post('/api/v1/orders/checkout', async (req, res, ctx) => {
         const body = await req.json<{ items: CartItem[] }>();
         const hasUnavailable = body.items.some(i => i.id === 'I002');
         if (hasUnavailable) {
@@ -501,7 +501,7 @@ describe('REQ20 — Unavailable item', () => {
     await waitFor(() => expect(onOrderConfirmed).toHaveBeenCalled());
 
     // Now simulate a bypass: call the API directly with an unavailable item
-    const bypassResponse = await fetch('/api/checkout', {
+    const bypassResponse = await fetch('/api/v1/orders/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -523,7 +523,7 @@ describe('Negative & failure scenarios', () => {
   it('NEG-01: API timeout surfaces a user-facing error', async () => {
     jest.useFakeTimers();
     server.use(
-      rest.post('/api/checkout', (_req, res) =>
+      rest.post('/api/v1/orders/checkout', (_req, res) =>
         res.networkError('Connection timed out')
       )
     );
@@ -541,7 +541,7 @@ describe('Negative & failure scenarios', () => {
   // NEG-02 ──────────────────────────────────────────────────────────────────
   it('NEG-02: HTTP 500 Internal Server Error shows error and re-enables button', async () => {
     server.use(
-      rest.post('/api/checkout', (_req, res, ctx) =>
+      rest.post('/api/v1/orders/checkout', (_req, res, ctx) =>
         res(ctx.status(500), ctx.json({ message: 'Internal server error' }))
       )
     );
@@ -558,7 +558,7 @@ describe('Negative & failure scenarios', () => {
   // NEG-03 ──────────────────────────────────────────────────────────────────
   it('NEG-03: malformed JSON response does not crash the component', async () => {
     server.use(
-      rest.post('/api/checkout', (_req, res, ctx) =>
+      rest.post('/api/v1/orders/checkout', (_req, res, ctx) =>
         res(
           ctx.status(200),
           ctx.set('Content-Type', 'text/plain'),
@@ -579,7 +579,7 @@ describe('Negative & failure scenarios', () => {
   // NEG-04 ──────────────────────────────────────────────────────────────────
   it('NEG-04: network goes offline mid-request → graceful error message', async () => {
     server.use(
-      rest.post('/api/checkout', (_req, res) =>
+      rest.post('/api/v1/orders/checkout', (_req, res) =>
         res.networkError('Network failure')
       )
     );
@@ -598,7 +598,7 @@ describe('Negative & failure scenarios', () => {
   // NEG-05 ──────────────────────────────────────────────────────────────────
   it('NEG-05: unexpected payment gateway status code (409 Conflict) handled gracefully', async () => {
     server.use(
-      rest.post('/api/checkout', (_req, res, ctx) =>
+      rest.post('/api/v1/orders/checkout', (_req, res, ctx) =>
         res(ctx.status(409), ctx.json({ message: 'Duplicate transaction' }))
       )
     );
@@ -615,7 +615,7 @@ describe('Negative & failure scenarios', () => {
   // NEG-06 ──────────────────────────────────────────────────────────────────
   it('NEG-06: empty cart renders without ConfirmOrder button error', () => {
     server.use(
-      rest.post('/api/checkout', (_req, res, ctx) =>
+      rest.post('/api/v1/orders/checkout', (_req, res, ctx) =>
         res(ctx.status(400), ctx.json({ message: 'Cart is empty' }))
       )
     );
@@ -626,7 +626,7 @@ describe('Negative & failure scenarios', () => {
   // NEG-07 ──────────────────────────────────────────────────────────────────
   it('NEG-07: null / undefined values in API response do not crash the component', async () => {
     server.use(
-      rest.post('/api/checkout', (_req, res, ctx) =>
+      rest.post('/api/v1/orders/checkout', (_req, res, ctx) =>
         // Response missing expected fields
         res(ctx.status(200), ctx.json({ id: null, status: undefined, total: null }))
       )
@@ -640,7 +640,7 @@ describe('Negative & failure scenarios', () => {
   // NEG-08 ──────────────────────────────────────────────────────────────────
   it('NEG-08: HTTP 429 Too Many Requests shows a rate-limit message', async () => {
     server.use(
-      rest.post('/api/checkout', (_req, res, ctx) =>
+      rest.post('/api/v1/orders/checkout', (_req, res, ctx) =>
         res(
           ctx.status(429),
           ctx.json({ message: 'Too many requests, please try again later.' })
@@ -659,7 +659,7 @@ describe('Negative & failure scenarios', () => {
   // NEG-09 ──────────────────────────────────────────────────────────────────
   it('NEG-09: HTTP 401 Unauthorized prompts re-authentication hint', async () => {
     server.use(
-      rest.post('/api/checkout', (_req, res, ctx) =>
+      rest.post('/api/v1/orders/checkout', (_req, res, ctx) =>
         res(ctx.status(401), ctx.json({ message: 'Session expired' }))
       )
     );
@@ -681,7 +681,7 @@ describe('Accessibility', () => {
   it('marks the submit button as aria-busy while processing', async () => {
     let resolveReq!: () => void;
     server.use(
-      rest.post('/api/checkout', async (_req, res, ctx) => {
+      rest.post('/api/v1/orders/checkout', async (_req, res, ctx) => {
         await new Promise<void>(r => { resolveReq = r; });
         return res(ctx.status(200), ctx.json(CONFIRMED_ORDER));
       })
@@ -697,7 +697,7 @@ describe('Accessibility', () => {
 
   it('error messages use role="alert" for screen-reader announcement', async () => {
     server.use(
-      rest.post('/api/checkout', (_req, res, ctx) =>
+      rest.post('/api/v1/orders/checkout', (_req, res, ctx) =>
         res(ctx.status(403), ctx.json({ message: 'Burger Palace is currently closed' }))
       )
     );

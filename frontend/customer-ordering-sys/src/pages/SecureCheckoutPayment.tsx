@@ -7,6 +7,7 @@ import DeliverySection from '../components/DeliverySection';
 import { useCreditCardValidation } from '../hooks/useCreditCardValidation';
 import { useCharacterLimit } from '../hooks/useCharacterLimit';
 import { CartItem } from '../utils/checkout.utils';
+import { submitCheckout } from '../api/checkout';
 
 interface Order {
   id: string;
@@ -46,32 +47,20 @@ const SecureCheckoutPayment: React.FC<SecureCheckoutPaymentProps> = ({
     setIsSubmitting(true);
     setGlobalError(null);
 
-
     try {
-      const response = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          items: cartItems,
-          clientTotal: cartItems.reduce((s, i) => s + i.qty * (i.price ?? 0), 0),
-          special_instructions: instructionsLimit.value,
-          specialInstructions: instructionsLimit.value,
-          delivery_notes: notesLimit.value,
-          deliveryNotes: notesLimit.value,
-          serverUtcHour,
-        }),
+      const payload = {
+        items: cartItems,
+        client_total_egp: cartItems.reduce((s, i) => s + (i.qty ?? i.quantity ?? 0) * (i.price ?? 0), 0),
+        special_instructions: instructionsLimit.value,
+        specialInstructions: instructionsLimit.value,
+        delivery_notes: notesLimit.value,
+        deliveryNotes: notesLimit.value,
+        idempotency_key: crypto.randomUUID(),
+        serverUtcHour,
+        payment_method: { type: 'CREDIT_CARD', gateway_token: 'tok_visa' },
+      };
 
-      });
-
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
-        const msg = body.message || `Request failed (${response.status})`;
-        setGlobalError(msg);
-        setIsSubmitting(false);
-        return;
-      }
-
-      const order: Order = await response.json();
+      const order: Order = await submitCheckout(payload);
       onOrderConfirmed?.(order);
       setIsSubmitting(false);
 
