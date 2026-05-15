@@ -9,6 +9,10 @@ interface PaymentFormProps {
   onExpiryChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   cvv: string;
   onCvvChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  cardType: string;
+  errors?: Record<string, string>;
+  touched: Record<string, boolean>;
+  onBlur: (field: string) => void;
 }
 
 const PaymentForm: React.FC<PaymentFormProps> = ({
@@ -20,6 +24,10 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   onExpiryChange,
   cvv,
   onCvvChange,
+  cardType,
+  errors,
+  touched,
+  onBlur,
 }) => {
   return (
     <div className="glass-card p-lg rounded-xl space-y-md shadow-2xl mt-lg">
@@ -37,7 +45,14 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             type="text"
             value={cardholder}
             onChange={onCardholderChange}
+            onBlur={() => onBlur('cardholder')}
+            aria-invalid={!!errors?.cardholder && touched.cardholder}
           />
+          {errors?.cardholder && touched.cardholder && (
+            <p className="text-error text-xs font-medium mt-1 animate-in fade-in slide-in-from-top-1 duration-200">
+              {errors.cardholder}
+            </p>
+          )}
         </div>
         <div className="space-y-xs col-span-full">
           <label className="font-label-caps text-label-caps text-on-surface-variant">
@@ -50,12 +65,22 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
               type="text"
               value={cardNumber}
               onChange={onCardNumberChange}
+              onBlur={() => onBlur('cardNumber')}
+              aria-invalid={!!errors?.cardNumber && touched.cardNumber}
             />
-            <div className="absolute right-md top-1/2 -translate-y-1/2 flex gap-xs">
-              <div className="w-6 h-4 bg-secondary/20 rounded-sm"></div>
-              <div className="w-6 h-4 bg-tertiary/20 rounded-sm"></div>
+            <div className="absolute right-md top-1/2 -translate-y-1/2 flex items-center">
+              {cardType !== 'unknown' && (
+                <span className="font-label-caps text-[10px] bg-secondary/20 text-secondary px-xs py-[2px] rounded border border-secondary/30 uppercase tracking-tighter">
+                  {cardType}
+                </span>
+              )}
             </div>
           </div>
+          {errors?.cardNumber && touched.cardNumber && (
+            <p className="text-error text-xs font-medium mt-1 animate-in fade-in slide-in-from-top-1 duration-200">
+              {errors.cardNumber}
+            </p>
+          )}
         </div>
         <div className="space-y-xs">
           <label className="font-label-caps text-label-caps text-on-surface-variant">
@@ -67,7 +92,14 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             type="text"
             value={expiry}
             onChange={onExpiryChange}
+            onBlur={() => onBlur('expiry')}
+            aria-invalid={!!errors?.expiry && touched.expiry}
           />
+          {errors?.expiry && touched.expiry && (
+            <p className="text-error text-xs font-medium mt-1 animate-in fade-in slide-in-from-top-1 duration-200">
+              {errors.expiry}
+            </p>
+          )}
         </div>
         <div className="space-y-xs">
           <label className="font-label-caps text-label-caps text-on-surface-variant">CVV</label>
@@ -78,9 +110,15 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
               type="text"
               value={cvv}
               onChange={onCvvChange}
+              onBlur={() => onBlur('cvv')}
+              aria-invalid={!!errors?.cvv && touched.cvv}
             />
-
           </div>
+          {errors?.cvv && touched.cvv && (
+            <p className="text-error text-xs font-medium mt-1 animate-in fade-in slide-in-from-top-1 duration-200">
+              {errors.cvv}
+            </p>
+          )}
         </div>
       </div>
       <div className="flex items-center gap-sm pt-md">

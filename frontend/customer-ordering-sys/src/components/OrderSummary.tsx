@@ -7,6 +7,7 @@ interface OrderSummaryProps {
   isSubmitting: boolean;
   onConfirm: () => void;
   isDisabled: boolean;
+  showErrorHint?: boolean;
 }
 
 const OrderSummary: React.FC<OrderSummaryProps> = ({
@@ -14,6 +15,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   isSubmitting,
   onConfirm,
   isDisabled,
+  showErrorHint = false,
 }) => {
   const subtotal = recalculateTotal(cartItems);
   const fee = 45.0; // Fixed fee for demo
@@ -67,7 +69,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       <div className="pt-lg">
         <button
           data-testid="confirm-order-btn"
-          disabled={isSubmitting}
+          disabled={isSubmitting || isDisabled}
           onClick={onConfirm}
           aria-busy={isSubmitting}
 
@@ -76,6 +78,11 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           <LockIcon className="w-5" />
           {isSubmitting ? 'Processing…' : 'Confirm Secure Payment'}
         </button>
+        {isDisabled && !isSubmitting && showErrorHint && (
+          <p className="text-center text-xs text-error/80 mt-sm font-medium animate-in fade-in duration-500">
+            Please fix payment errors and confirm your delivery location to continue
+          </p>
+        )}
         <p className="text-center text-[10px] font-label-caps text-on-surface-variant/60 mt-md flex items-center justify-center gap-xs uppercase tracking-widest">
           <span className="material-symbols-outlined text-[12px]">verified_user</span>
           256-bit Encrypted SSL Security

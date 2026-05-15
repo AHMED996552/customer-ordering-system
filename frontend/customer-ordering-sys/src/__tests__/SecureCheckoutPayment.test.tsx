@@ -57,6 +57,34 @@ import userEvent from '@testing-library/user-event';
 import { setupServer } from 'msw/node';
 import { rest } from 'msw';
 
+// Mock validation to bypass UI disabling in tests
+jest.mock('../hooks/useCreditCardValidation', () => ({
+  useCreditCardValidation: () => ({
+    cardholder: '',
+    cardNumber: '',
+    expiry: '',
+    cvv: '',
+    cardType: 'visa',
+    isValid: true,
+    handleCardNumberChange: jest.fn(),
+    handleExpiryChange: jest.fn(),
+    handleCvvChange: jest.fn(),
+    setCardholder: jest.fn(),
+    errors: {},
+  }),
+}));
+
+// Mock DeliverySection to avoid Leaflet issues and automatically confirm location for tests
+jest.mock('../components/DeliverySection', () => {
+  return ({ onLocationConfirmed }: { onLocationConfirmed: (c: boolean) => void }) => {
+    const { useEffect } = require('react');
+    useEffect(() => {
+      onLocationConfirmed(true);
+    }, [onLocationConfirmed]);
+    return <div data-testid="mock-delivery-section" />;
+  };
+});
+
 // ─── type stubs (delete when importing from real module) ───────────────────
 type OrderStatus = 'CONFIRMED' | 'FAILED' | 'PENDING';
 interface Order { id: string; status: OrderStatus; total: number; }
@@ -113,10 +141,10 @@ function useSuccessHandler(
   capture?: (body: Record<string, unknown>) => void
 ) {
   server.use(
-    rest.post('/api/checkout', async (req, res, ctx) => {
+    rest.post('/api/v1/orders/checkout', async (req, res, ctx) => {
       const body = await req.json<Record<string, unknown>>();
       capture?.(body);
-      return res(ctx.status(200), ctx.json(CONFIRMED_ORDER));
+      return res(ctx.status(201), ctx.json({ order_id: 'ORD-001', status: 'CONFIRMED' }));
     })
   );
 }
@@ -146,8 +174,8 @@ describe('Happy path & idempotency', () => {
   // SCN-02 ──────────────────────────────────────────────────────────────────
   it('SCN-02: gateway failure does NOT create an order and re-enables the button', async () => {
     server.use(
-      rest.post('/api/checkout', (_req, res, ctx) =>
-        res(ctx.status(402), ctx.json({ message: 'Payment declined' }))
+      rest.post('/api/v1/orders/checkout', (_req, res, ctx) =>
+        res(ctx.status(402), ctx.json({ error: { code: 'PAYMENT_DECLINED', message: 'Payment declined' } }))
       )
     );
     const { onOrderConfirmed } = renderCheckout();
@@ -165,9 +193,9 @@ describe('Happy path & idempotency', () => {
   it('SCN-03: button is disabled synchronously before HTTP dispatch', async () => {
     let resolveRequest!: () => void;
     server.use(
-      rest.post('/api/checkout', async (_req, res, ctx) => {
+      rest.post('/api/v1/orders/checkout', async (_req, res, ctx) => {
         await new Promise<void>(r => { resolveRequest = r; });
-        return res(ctx.status(200), ctx.json(CONFIRMED_ORDER));
+        return res(ctx.status(201), ctx.json({ order_id: 'ORD-001', status: 'CONFIRMED' }));
       })
     );
     renderCheckout();
@@ -191,9 +219,9 @@ describe('Happy path & idempotency', () => {
   it('SCN-04: three rapid clicks within 200ms produce exactly one POST', async () => {
     let callCount = 0;
     server.use(
-      rest.post('/api/checkout', async (_req, res, ctx) => {
+      rest.post('/api/v1/orders/checkout', async (_req, res, ctx) => {
         callCount++;
-        return res(ctx.status(200), ctx.json(CONFIRMED_ORDER));
+        return res(ctx.status(201), ctx.json({ order_id: 'ORD-001', status: 'CONFIRMED' }));
       })
     );
     renderCheckout();
@@ -218,10 +246,10 @@ describe('REQ17 — Server-side price recalculation', () => {
   it('SCN-05: server discards client total 0.01 EGP and uses correct 150.00 EGP', async () => {
     let receivedBody: Record<string, unknown> = {};
     server.use(
-      rest.post('/api/checkout', async (req, res, ctx) => {
+      rest.post('/api/v1/orders/checkout', async (req, res, ctx) => {
         receivedBody = await req.json<Record<string, unknown>>();
         // Server would ignore clientTotal and recalculate → respond with 150.00
-        return res(ctx.status(200), ctx.json({ ...CONFIRMED_ORDER, total: 150.00 }));
+        return res(ctx.status(201), ctx.json({ order_id: 'ORD-001', status: 'CONFIRMED' }));
       })
     );
 
@@ -252,10 +280,10 @@ describe('REQ17 — Server-side price recalculation', () => {
       async (_label, manipulatedUnitPrice, qty, _dbPrice, expectedTotal) => {
         let authorizedAmount = 0;
         server.use(
-          rest.post('/api/checkout', async (_req, res, ctx) => {
+          rest.post('/api/v1/orders/checkout', async (_req, res, ctx) => {
             // Simulated server: always uses DB price, ignores client price
             authorizedAmount = expectedTotal;
-            return res(ctx.status(200), ctx.json({ ...CONFIRMED_ORDER, total: expectedTotal }));
+            return res(ctx.status(201), ctx.json({ order_id: 'ORD-001', status: 'CONFIRMED' }));
           })
         );
 
@@ -282,8 +310,8 @@ describe('REQ18 — Character limit on free-text fields', () => {
   // SCN-07 ──────────────────────────────────────────────────────────────────
   it('SCN-07: Special Instructions textarea has maxLength=500 and counter updates', async () => {
     server.use(
-      rest.post('/api/checkout', (_req, res, ctx) =>
-        res(ctx.status(200), ctx.json(CONFIRMED_ORDER))
+      rest.post('/api/v1/orders/checkout', (_req, res, ctx) =>
+        res(ctx.status(201), ctx.json({ order_id: 'ORD-001', status: 'CONFIRMED' }))
       )
     );
     renderCheckout();
@@ -304,12 +332,12 @@ describe('REQ18 — Character limit on free-text fields', () => {
   // SCN-08 ──────────────────────────────────────────────────────────────────
   it('SCN-08: server rejects Special Instructions > 500 chars with HTTP 422', async () => {
     server.use(
-      rest.post('/api/checkout', async (req, res, ctx) => {
-        const body = await req.json<{ specialInstructions?: string }>();
-        if ((body.specialInstructions?.length ?? 0) > 500) {
-          return res(ctx.status(422), ctx.json({ message: 'Input too long' }));
+      rest.post('/api/v1/orders/checkout', async (req, res, ctx) => {
+        const body = await req.json<{ special_instructions?: string }>();
+        if ((body.special_instructions?.length ?? 0) > 500) {
+          return res(ctx.status(422), ctx.json({ error: { code: 'VALIDATION_FAILED', message: 'Input too long' } }));
         }
-        return res(ctx.status(200), ctx.json(CONFIRMED_ORDER));
+        return res(ctx.status(201), ctx.json({ order_id: 'ORD-001', status: 'CONFIRMED' }));
       })
     );
     renderCheckout();
@@ -337,13 +365,13 @@ describe('REQ18 — Character limit on free-text fields', () => {
       '%s with %i chars → HTTP %i',
       async (fieldName, testId, inputLen, expectedStatus) => {
         server.use(
-          rest.post('/api/checkout', async (req, res, ctx) => {
+          rest.post('/api/v1/orders/checkout', async (req, res, ctx) => {
             const body = await req.json<Record<string, string>>();
             const fieldValue = body[fieldName] ?? '';
             if (fieldValue.length > 500) {
-              return res(ctx.status(422), ctx.json({ message: 'Input too long' }));
+              return res(ctx.status(422), ctx.json({ error: { code: 'VALIDATION_FAILED', message: 'Input too long' } }));
             }
-            return res(ctx.status(200), ctx.json(CONFIRMED_ORDER));
+            return res(ctx.status(201), ctx.json({ order_id: 'ORD-001', status: 'CONFIRMED' }));
           })
         );
 
@@ -372,15 +400,15 @@ describe('REQ19 — Operating hours', () => {
   // SCN-10 ──────────────────────────────────────────────────────────────────
   it('SCN-10: checkout rejected at server UTC 03:00 even when client clock shows 14:00', async () => {
     server.use(
-      rest.post('/api/checkout', async (req, res, ctx) => {
+      rest.post('/api/v1/orders/checkout', async (req, res, ctx) => {
         const body = await req.json<{ serverUtcHour: number }>();
         if (body.serverUtcHour < 10 || body.serverUtcHour >= 22) {
           return res(
             ctx.status(403),
-            ctx.json({ message: 'Burger Palace is currently closed' })
+            ctx.json({ error: { code: 'STORE_CLOSED', message: 'Burger Palace is currently closed' } })
           );
         }
-        return res(ctx.status(200), ctx.json(CONFIRMED_ORDER));
+        return res(ctx.status(201), ctx.json({ order_id: 'ORD-001', status: 'CONFIRMED' }));
       })
     );
 
@@ -388,23 +416,23 @@ describe('REQ19 — Operating hours', () => {
     const { onOrderConfirmed } = renderCheckout({ serverUtcHour: 3 });
     await userEvent.click(screen.getByTestId('confirm-order-btn'));
 
-    await waitFor(() =>
-      expect(screen.getByTestId('checkout-error')).toHaveTextContent(
-        'Burger Palace is currently closed'
-      )
-    );
+      await waitFor(() =>
+        expect(screen.getByTestId('checkout-error')).toHaveTextContent(
+          'The restaurant is currently closed. We only accept orders between 10:00 and 22:00 UTC.'
+        )
+      );
     expect(onOrderConfirmed).not.toHaveBeenCalled();
   });
 
   // SCN-11 ──────────────────────────────────────────────────────────────────
   describe('SCN-11: operating hours boundary sweep', () => {
-    const closedOpenHandler = rest.post('/api/checkout', async (req, res, ctx) => {
+    const closedOpenHandler = rest.post('/api/v1/orders/checkout', async (req, res, ctx) => {
       const body = await req.json<{ serverUtcHour: number }>();
       const { serverUtcHour: h } = body;
       if (h < 10 || h >= 22) {
-        return res(ctx.status(403), ctx.json({ message: 'Burger Palace is currently closed' }));
+        return res(ctx.status(403), ctx.json({ error: { code: 'STORE_CLOSED', message: 'Burger Palace is currently closed' } }));
       }
-      return res(ctx.status(200), ctx.json(CONFIRMED_ORDER));
+      return res(ctx.status(201), ctx.json({ order_id: 'ORD-001', status: 'CONFIRMED' }));
     });
 
     test.each([
@@ -439,16 +467,16 @@ describe('REQ19 — Operating hours', () => {
 describe('REQ20 — Unavailable item', () => {
 
   // SCN-12 ──────────────────────────────────────────────────────────────────
-  it('SCN-12: ConfirmOrder button absent when pre-checkout refresh finds unavailable item I002', () => {
+  it('SCN-12: ConfirmOrder button absent when pre-checkout refresh finds unavailable item I003', () => {
     renderCheckout({
       cartItems: [
         { id: 'I001', name: 'Classic Burger', qty: 2, price: 75.00 },
-        { id: 'I002', name: 'Crispy Fries', qty: 1, price: 30.00 },
+        { id: 'I003', name: 'Small Salad', qty: 1, price: 50.00 },
       ],
     });
 
     expect(screen.queryByTestId('confirm-order-btn')).not.toBeInTheDocument();
-    expect(screen.getByTestId('unavailable-warning')).toHaveTextContent('I002');
+    expect(screen.getByTestId('unavailable-warning')).toHaveTextContent('I003');
   });
 
   it('SCN-12b: button IS rendered once unavailable item is removed from cart', async () => {
@@ -456,7 +484,7 @@ describe('REQ20 — Unavailable item', () => {
       <SecureCheckoutPayment
         cartItems={[
           { id: 'I001', name: 'Classic Burger', qty: 2, price: 75.00 },
-          { id: 'I002', name: 'Crispy Fries', qty: 1, price: 30.00 },
+          { id: 'I003', name: 'Small Salad', qty: 1, price: 50.00 },
         ]}
       />
     );
@@ -475,16 +503,16 @@ describe('REQ20 — Unavailable item', () => {
   // SCN-13 ──────────────────────────────────────────────────────────────────
   it('SCN-13: server rejects checkout with HTTP 422 even when UI check is bypassed', async () => {
     server.use(
-      rest.post('/api/checkout', async (req, res, ctx) => {
+      rest.post('/api/v1/orders/checkout', async (req, res, ctx) => {
         const body = await req.json<{ items: CartItem[] }>();
-        const hasUnavailable = body.items.some(i => i.id === 'I002');
+        const hasUnavailable = body.items.some(i => i.id === 'I003');
         if (hasUnavailable) {
           return res(
             ctx.status(422),
-            ctx.json({ message: 'Item I002 is unavailable' })
+            ctx.json({ error: { code: 'ITEM_UNAVAILABLE', message: 'Item I003 is unavailable' } })
           );
         }
-        return res(ctx.status(200), ctx.json(CONFIRMED_ORDER));
+        return res(ctx.status(201), ctx.json({ order_id: 'ORD-001', status: 'CONFIRMED' }));
       })
     );
 
@@ -501,16 +529,16 @@ describe('REQ20 — Unavailable item', () => {
     await waitFor(() => expect(onOrderConfirmed).toHaveBeenCalled());
 
     // Now simulate a bypass: call the API directly with an unavailable item
-    const bypassResponse = await fetch('/api/checkout', {
+    const bypassResponse = await fetch('/api/v1/orders/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        items: [{ id: 'I002', name: 'Crispy Fries', qty: 1, price: 30.00 }],
+        items: [{ id: 'I003', name: 'Small Salad', qty: 1, price: 50.00 }],
       }),
     });
     expect(bypassResponse.status).toBe(422);
     const err = await bypassResponse.json();
-    expect(err.message).toContain('I002');
+    expect(err.error.message).toContain('I003');
   });
 });
 
@@ -523,7 +551,7 @@ describe('Negative & failure scenarios', () => {
   it('NEG-01: API timeout surfaces a user-facing error', async () => {
     jest.useFakeTimers();
     server.use(
-      rest.post('/api/checkout', (_req, res) =>
+      rest.post('/api/v1/orders/checkout', (_req, res) =>
         res.networkError('Connection timed out')
       )
     );
@@ -541,8 +569,8 @@ describe('Negative & failure scenarios', () => {
   // NEG-02 ──────────────────────────────────────────────────────────────────
   it('NEG-02: HTTP 500 Internal Server Error shows error and re-enables button', async () => {
     server.use(
-      rest.post('/api/checkout', (_req, res, ctx) =>
-        res(ctx.status(500), ctx.json({ message: 'Internal server error' }))
+      rest.post('/api/v1/orders/checkout', (_req, res, ctx) =>
+        res(ctx.status(500), ctx.json({ error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } }))
       )
     );
     renderCheckout();
@@ -558,7 +586,7 @@ describe('Negative & failure scenarios', () => {
   // NEG-03 ──────────────────────────────────────────────────────────────────
   it('NEG-03: malformed JSON response does not crash the component', async () => {
     server.use(
-      rest.post('/api/checkout', (_req, res, ctx) =>
+      rest.post('/api/v1/orders/checkout', (_req, res, ctx) =>
         res(
           ctx.status(200),
           ctx.set('Content-Type', 'text/plain'),
@@ -579,7 +607,7 @@ describe('Negative & failure scenarios', () => {
   // NEG-04 ──────────────────────────────────────────────────────────────────
   it('NEG-04: network goes offline mid-request → graceful error message', async () => {
     server.use(
-      rest.post('/api/checkout', (_req, res) =>
+      rest.post('/api/v1/orders/checkout', (_req, res) =>
         res.networkError('Network failure')
       )
     );
@@ -598,8 +626,8 @@ describe('Negative & failure scenarios', () => {
   // NEG-05 ──────────────────────────────────────────────────────────────────
   it('NEG-05: unexpected payment gateway status code (409 Conflict) handled gracefully', async () => {
     server.use(
-      rest.post('/api/checkout', (_req, res, ctx) =>
-        res(ctx.status(409), ctx.json({ message: 'Duplicate transaction' }))
+      rest.post('/api/v1/orders/checkout', (_req, res, ctx) =>
+        res(ctx.status(409), ctx.json({ error: { code: 'IDEMPOTENCY_CONFLICT', message: 'Duplicate transaction' } }))
       )
     );
     const { onOrderConfirmed } = renderCheckout();
@@ -615,8 +643,8 @@ describe('Negative & failure scenarios', () => {
   // NEG-06 ──────────────────────────────────────────────────────────────────
   it('NEG-06: empty cart renders without ConfirmOrder button error', () => {
     server.use(
-      rest.post('/api/checkout', (_req, res, ctx) =>
-        res(ctx.status(400), ctx.json({ message: 'Cart is empty' }))
+      rest.post('/api/v1/orders/checkout', (_req, res, ctx) =>
+        res(ctx.status(400), ctx.json({ error: { code: 'CART_EMPTY', message: 'Cart is empty' } }))
       )
     );
     // Should render without throwing
@@ -626,9 +654,9 @@ describe('Negative & failure scenarios', () => {
   // NEG-07 ──────────────────────────────────────────────────────────────────
   it('NEG-07: null / undefined values in API response do not crash the component', async () => {
     server.use(
-      rest.post('/api/checkout', (_req, res, ctx) =>
+      rest.post('/api/v1/orders/checkout', (_req, res, ctx) =>
         // Response missing expected fields
-        res(ctx.status(200), ctx.json({ id: null, status: undefined, total: null }))
+        res(ctx.status(201), ctx.json({ order_id: null, status: undefined }))
       )
     );
     // Should not throw
@@ -640,10 +668,10 @@ describe('Negative & failure scenarios', () => {
   // NEG-08 ──────────────────────────────────────────────────────────────────
   it('NEG-08: HTTP 429 Too Many Requests shows a rate-limit message', async () => {
     server.use(
-      rest.post('/api/checkout', (_req, res, ctx) =>
+      rest.post('/api/v1/orders/checkout', (_req, res, ctx) =>
         res(
           ctx.status(429),
-          ctx.json({ message: 'Too many requests, please try again later.' })
+          ctx.json({ error: { code: 'TOO_MANY_REQUESTS', message: 'Too many requests, please try again later.' } })
         )
       )
     );
@@ -659,8 +687,8 @@ describe('Negative & failure scenarios', () => {
   // NEG-09 ──────────────────────────────────────────────────────────────────
   it('NEG-09: HTTP 401 Unauthorized prompts re-authentication hint', async () => {
     server.use(
-      rest.post('/api/checkout', (_req, res, ctx) =>
-        res(ctx.status(401), ctx.json({ message: 'Session expired' }))
+      rest.post('/api/v1/orders/checkout', (_req, res, ctx) =>
+        res(ctx.status(401), ctx.json({ error: { code: 'UNAUTHORIZED', message: 'Session expired' } }))
       )
     );
     renderCheckout();
@@ -681,9 +709,9 @@ describe('Accessibility', () => {
   it('marks the submit button as aria-busy while processing', async () => {
     let resolveReq!: () => void;
     server.use(
-      rest.post('/api/checkout', async (_req, res, ctx) => {
+      rest.post('/api/v1/orders/checkout', async (_req, res, ctx) => {
         await new Promise<void>(r => { resolveReq = r; });
-        return res(ctx.status(200), ctx.json(CONFIRMED_ORDER));
+        return res(ctx.status(201), ctx.json({ order_id: 'ORD-001', status: 'CONFIRMED' }));
       })
     );
     renderCheckout();
@@ -697,8 +725,8 @@ describe('Accessibility', () => {
 
   it('error messages use role="alert" for screen-reader announcement', async () => {
     server.use(
-      rest.post('/api/checkout', (_req, res, ctx) =>
-        res(ctx.status(403), ctx.json({ message: 'Burger Palace is currently closed' }))
+      rest.post('/api/v1/orders/checkout', (_req, res, ctx) =>
+        res(ctx.status(403), ctx.json({ error: { code: 'STORE_CLOSED', message: 'Burger Palace is currently closed' } }))
       )
     );
     renderCheckout({ serverUtcHour: 3 });

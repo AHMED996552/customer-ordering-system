@@ -6,7 +6,7 @@ import Footer from './components/Footer';
 
 const CART_ITEMS = [
   { id: 'I001', name: 'The Chef\'s Tasting Menu', qty: 1, price: 325.00 },
-  { id: 'I003', name: 'Elite Wine Pairing', qty: 1, price: 180.00 },
+  { id: 'I002', name: 'Elite Wine Pairing', qty: 1, price: 180.00 },
 ];
 
 function App() {
