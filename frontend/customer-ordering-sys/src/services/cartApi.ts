@@ -1,16 +1,27 @@
-const BASE = 'http://localhost:5000';
+const BASE = 'http://localhost:8000';
 
 interface AddToCartParams {
   itemId: string;
   quantity: number;
 }
 
-export async function addToCart(params: AddToCartParams): Promise<{ success: boolean }> {
-  const res = await fetch(`${BASE}/cart`, {
+export async function addToCart(params: AddToCartParams): Promise<any> {
+  const res = await fetch(`${BASE}/api/v1/cart/items`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params),
+    body: JSON.stringify({
+      item_id: params.itemId,
+      quantity: params.quantity
+    }),
   });
-  if (!res.ok) throw new Error(`Cart API error: ${res.status}`);
-  return res.json() as Promise<{ success: boolean }>;
+  
+  const data = await res.json();
+  
+  if (!res.ok) {
+    // Surface the exact error message from the backend (e.g., cross-restaurant error)
+    const backendMsg = data?.error?.message || `Cart API error: ${res.status}`;
+    throw new Error(backendMsg);
+  }
+  
+  return data;
 }

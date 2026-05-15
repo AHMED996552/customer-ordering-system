@@ -8,43 +8,31 @@ import './MenuPage.css';
 const ALL_ITEMS: MenuItem[] = [
   {
     id: 'I001', name: 'Classic Burger', price: 75, available: true,
-    category: 'Burgers',
+    category: 'BurgerPalace',
     description: 'Juicy beef patty, aged cheddar, crispy lettuce, tomato and house sauce.',
     image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&q=80',
   },
   {
-    id: 'I002', name: 'Crispy Chicken Wrap', price: 65, available: true,
-    category: 'Specials',
-    description: 'Golden fried chicken, romaine, pickles and garlic aioli in a warm tortilla.',
+    id: 'I002', name: 'Crispy Fries', price: 35, available: true,
+    category: 'BurgerPalace',
+    description: 'Golden, crispy, and perfectly salted french fries.',
     image: 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=600&q=80',
   },
   {
-    id: 'I003', name: 'Truffle Pasta', price: 110, available: true,
-    category: 'Pasta',
-    description: 'Hand-cut tagliatelle, black truffle oil, parmesan and fresh herbs.',
-    image: 'https://images.unsplash.com/photo-1555949258-eb67b1ef0ceb?w=600&q=80',
-  },
-  {
-    id: 'I004', name: 'Seasonal Special', price: 95, available: false,
-    category: 'Specials',
-    description: "Chef's daily creation — currently unavailable.",
+    id: 'I003', name: 'UnavailableSpecial', price: 50, available: false,
+    category: 'BurgerPalace',
+    description: 'Currently out of stock.',
     image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&q=80',
   },
   {
-    id: 'I005', name: 'Mushroom Risotto', price: 90, available: true,
-    category: 'Pasta',
-    description: 'Creamy Arborio rice, wild mushrooms, white wine and aged parmesan.',
-    image: 'https://images.unsplash.com/photo-1476124369491-e7addf5db371?w=600&q=80',
-  },
-  {
-    id: 'I006', name: 'Smash Burger', price: 80, available: true,
-    category: 'Burgers',
-    description: 'Double smash patty, American cheese, caramelised onions, pickles.',
-    image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=600&q=80',
+    id: 'I004', name: 'Pepperoni Pizza', price: 120, available: true,
+    category: 'PizzaKingdom',
+    description: 'Classic pepperoni with gooey mozzarella. Warning: adding this with BurgerPalace items triggers a cross-restaurant error!',
+    image: 'https://images.unsplash.com/photo-1555949258-eb67b1ef0ceb?w=600&q=80',
   },
 ];
 
-const CATEGORIES = ['All', 'Burgers', 'Pasta', 'Specials'];
+const CATEGORIES = ['All', 'BurgerPalace', 'PizzaKingdom'];
 
 const MenuPage: React.FC = () => {
   const { cartItems, subtotal } = useCart();

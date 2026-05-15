@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import QuantitySelector from './QuantitySelector';
 import { useCart } from '../context/CartContext';
+import { addToCart } from '../services/cartApi';
 import './MenuItemCard.css';
 
 export interface MenuItem {
@@ -22,10 +23,21 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({ item }) => {
   const [quantity, setQuantity] = useState(1);
   const isInvalid = quantity < 1;
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (isInvalid) return;
-    addItem({ id: item.id, name: item.name, price: item.price, quantity });
-    setQuantity(1);
+
+    try {
+      // 1. Send the request to the Flask backend
+      await addToCart({ itemId: item.id, quantity });
+      
+      // 2. Update the local React state
+      addItem({ id: item.id, name: item.name, price: item.price, quantity });
+      setQuantity(1);
+    } catch (err: any) {
+      console.error("Failed to add to cart:", err);
+      // Show the exact backend error to the user
+      alert(err.message || "Failed to add item to cart. Please check the console.");
+    }
   };
 
   return (
