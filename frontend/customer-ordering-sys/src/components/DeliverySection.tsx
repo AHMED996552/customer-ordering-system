@@ -39,12 +39,17 @@ const ViewUpdater: React.FC<{ center: [number, number] }> = ({ center }) => {
   return null;
 };
 
-const DeliverySection: React.FC = () => {
+interface DeliverySectionProps {
+  onLocationConfirmed: (confirmed: boolean) => void;
+}
+
+const DeliverySection: React.FC<DeliverySectionProps> = ({ onLocationConfirmed }) => {
   const [position, setPosition] = useState<[number, number]>([25.1873919, 55.2031154]); // Dubai default
   const [isConfirmed, setIsConfirmed] = useState(false);
 
   const handleReset = () => {
     setIsConfirmed(false);
+    onLocationConfirmed(false);
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
@@ -62,7 +67,7 @@ const DeliverySection: React.FC = () => {
 
   const handleConfirm = () => {
     setIsConfirmed(true);
-    // In a real app, this might save to a context or parent state
+    onLocationConfirmed(true);
   };
 
   return (
@@ -93,6 +98,7 @@ const DeliverySection: React.FC = () => {
           <LocationPicker onPositionChange={(pos) => {
             setPosition(pos);
             setIsConfirmed(false);
+            onLocationConfirmed(false);
           }} />
           <ViewUpdater center={position} />
         </MapContainer>

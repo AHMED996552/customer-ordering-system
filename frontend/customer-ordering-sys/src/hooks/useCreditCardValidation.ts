@@ -65,16 +65,37 @@ export function useCreditCardValidation() {
     setCvv(value.slice(0, cvvLength(cardType)));
   }, [cardType]);
 
-  const isValid = useMemo(() => {
+  const errors = useMemo(() => {
     const rawNumber = cardNumber.replace(/\D/g, '');
-    return (
-      cardholder.trim().length > 0 &&
-      rawNumber.length >= 13 &&
-      luhn(rawNumber) &&
-      validateExpiry(expiry).valid &&
-      validateCvv(cvv, cardType)
-    );
+    const errs: Record<string, string> = {};
+
+    if (!cardholder.trim()) {
+      errs.cardholder = 'Cardholder name is required';
+    }
+
+    if (!rawNumber) {
+      errs.cardNumber = 'Card number is required';
+    } else if (rawNumber.length < 13 || !luhn(rawNumber)) {
+      errs.cardNumber = 'Invalid card number';
+    }
+
+    const expiryCheck = validateExpiry(expiry);
+    if (!expiry) {
+      errs.expiry = 'Expiry date is required';
+    } else if (!expiryCheck.valid) {
+      errs.expiry = expiryCheck.error || 'Invalid expiry date';
+    }
+
+    if (!cvv) {
+      errs.cvv = 'CVV is required';
+    } else if (!validateCvv(cvv, cardType)) {
+      errs.cvv = `Invalid CVV (must be ${cvvLength(cardType)} digits)`;
+    }
+
+    return errs;
   }, [cardholder, cardNumber, expiry, cvv, cardType]);
+
+  const isValid = Object.keys(errors).length === 0;
 
   return {
     cardholder,
@@ -87,5 +108,6 @@ export function useCreditCardValidation() {
     handleCvvChange,
     cardType,
     isValid,
+    errors,
   };
 }
