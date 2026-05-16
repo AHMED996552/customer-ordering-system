@@ -4,6 +4,7 @@ main.py — Flask Application Factory for Customer Ordering System
 
 import os
 from flask import Flask
+from flask_cors import CORS
 from database.schema import OrderingSystemDB
 from backend.routes.auth_routes import auth_bp
 
@@ -23,6 +24,13 @@ def create_app(config: dict | None = None) -> Flask:
     # ── Override with test/runtime config ────────────────────────────────────
     if config:
         app.config.update(config)
+
+    # ── CORS (must come before blueprints so all routes are covered) ──────────
+    CORS(
+        app,
+        supports_credentials=True,
+        origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    )
 
     # ── Initialize DB (creates tables if not exist) ───────────────────────────
     OrderingSystemDB(db_path=app.config["DATABASE_PATH"])
