@@ -72,6 +72,21 @@ class OrderingSystemDB:
                     FOREIGN KEY (cart_id) REFERENCES Carts(cart_id)
                 )
             """)
+            # 6. Users Table (UC-6: Register / UC-7: Authenticate)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS Users (
+                    user_id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                    email            TEXT UNIQUE NOT NULL,
+                    password_hash    TEXT NOT NULL,
+                    full_name        TEXT NOT NULL,
+                    mobile_number    TEXT,
+                    status           TEXT DEFAULT 'ACTIVE'
+                                     CHECK(status IN ('ACTIVE', 'INACTIVE', 'LOCKED')),
+                    failed_attempts  INTEGER DEFAULT 0,
+                    lockout_expires_at DATETIME
+                )
+            """)
+
             conn.commit()
             print("DBA Trace: Database initialized with core padlocks.")
 
