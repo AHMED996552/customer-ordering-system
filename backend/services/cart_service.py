@@ -1,13 +1,26 @@
+MOCK_ITEMS = {
+    "I001": {"id": "I001", "name": "Classic Burger", "price_egp": 75.0, "is_available": True},
+    "I002": {"id": "I002", "name": "Crispy Chicken Sandwich", "price_egp": 85.0, "is_available": True},
+    "item_1": {"id": "item_1", "name": "Classic Burger", "price_egp": 75.0, "is_available": True},
+    "item_2": {"id": "item_2", "name": "Crispy Chicken Sandwich", "price_egp": 85.0, "is_available": True},
+}
+
 def get_item(item_id):
-    """Stub for repository lookup. Patched in tests."""
-    pass
+    """Stub for repository lookup. Returns mock data for now."""
+    return MOCK_ITEMS.get(item_id)
 
 def _get_empty_cart():
     return {
         "cart_id": "cart_tmp",
-        "restaurant_id": None,
-        "restaurant_name": None,
-        "items": [],
+        # "restaurant_id": None,
+        # "restaurant_name": None,
+        # "items": [],
+        "restaurant_id": "R001",
+        "restaurant_name": "LuxeEats",
+        "items": [
+            {"item_id": "I001", "quantity": 1},
+            {"item_id": "I002", "quantity": 2}
+        ],
         "subtotal_egp": 0.0,
         "item_count": 0,
         "checkout_eligible": False,
@@ -124,3 +137,36 @@ def refresh_session_cart(session):
     
     session['cart'] = updated_cart
     return updated_cart
+
+def update_item_quantity(session, line_item_id, quantity):
+    """Updates the quantity of a specific item in the cart."""
+    raw_cart = session.get('cart', _get_empty_cart())
+    items = raw_cart.get('items', [])
+    
+    # In this implementation, line_item_id is f"li_{item_id}"
+    item_id = line_item_id.replace("li_", "")
+    
+    found = False
+    for item in items:
+        if item.get('item_id') == item_id:
+            item['quantity'] = quantity
+            found = True
+            break
+            
+    if not found:
+        items.append({'item_id': item_id, 'quantity': quantity})
+        
+    raw_cart['items'] = items
+    session['cart'] = raw_cart
+    return refresh_session_cart(session)
+
+def remove_item(session, line_item_id):
+    """Removes an item from the cart."""
+    raw_cart = session.get('cart', _get_empty_cart())
+    items = raw_cart.get('items', [])
+    
+    item_id = line_item_id.replace("li_", "")
+    raw_cart['items'] = [item for item in items if item.get('item_id') != item_id]
+    
+    session['cart'] = raw_cart
+    return refresh_session_cart(session)
