@@ -10,6 +10,7 @@ Tests the 4 Padlock Rules:
 import os
 import sqlite3
 import tempfile
+import uuid
 import pytest
 
 from main import create_app
@@ -59,28 +60,30 @@ def _seed_user(
     conn: sqlite3.Connection,
     email: str = "alice@example.com",
     password: str = "Passw0rd!",
-    status: str = "ACTIVE",
+    status: str = "ACTIVE",          # explicitly override PENDING_VERIFICATION default
     failed_attempts: int = 0,
     lockout_expires_at: str | None = None,
 ) -> int:
-    """Inserts a user and returns the new user_id."""
+    """Inserts a user and returns the new row id (integer PK)."""
     hashed = hash_password(password)
     cursor = conn.cursor()
     cursor.execute(
         """
         INSERT INTO Users
-            (email, password_hash, full_name, mobile_number,
-             status, failed_attempts, lockout_expires_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+            (user_id, email, password_hash, full_name, phone_number,
+             status, failed_attempts, lockout_expires_at, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
+            str(uuid.uuid4()),          # user_id: TEXT UUID (new column)
             email.lower(),
             hashed,
             "Alice Smith",
-            "01012345678",
+            "01012345678",              # phone_number (renamed from mobile_number)
             status,
             failed_attempts,
             lockout_expires_at,
+            datetime.now(timezone.utc).isoformat(),  # created_at NOT NULL
         ),
     )
     conn.commit()
@@ -279,7 +282,7 @@ class TestHappyPath:
         assert "user" in data
         assert data["user"]["email"] == "meta@example.com"
         assert "full_name" in data["user"]
-        assert "user_id" in data["user"]
+        assert "user_id" in data["user"]          # TEXT UUID from new schema
 
     def test_jwt_not_in_response_body(self, client, db_conn):
         """Security: raw JWT must NOT appear anywhere in the JSON body."""

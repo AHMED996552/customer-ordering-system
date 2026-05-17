@@ -51,7 +51,8 @@ def login():
     # ── Build JWT (stored in cookie, NOT in body) ─────────────────────────────
     secret_key: str = current_app.config.get("JWT_SECRET_KEY", "dev-secret-change-me")
     token_payload = {
-        "sub": user["user_id"],
+        "sub": user["id"],          # internal integer PK — never exposed to client
+        "uid": user["user_id"],     # TEXT UUID — safe to embed in token claims
         "email": user["email"],
         "iat": datetime.datetime.now(datetime.timezone.utc),
         "exp": datetime.datetime.now(datetime.timezone.utc)
@@ -65,7 +66,7 @@ def login():
             {
                 "message": "Login successful.",
                 "user": {
-                    "user_id": user["user_id"],
+                    "user_id": user["user_id"],  # TEXT UUID exposed to frontend
                     "email": user["email"],
                     "full_name": user["full_name"],
                 },

@@ -13,7 +13,8 @@ export interface LoginPayload {
 }
 
 export interface UserInfo {
-  user_id: number;
+  id: number;        // internal integer PK (present in response, avoid using in UI)
+  user_id: string;   // TEXT UUID — the canonical external identifier
   email: string;
   full_name: string;
 }

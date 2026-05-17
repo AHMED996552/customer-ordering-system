@@ -75,15 +75,18 @@ class OrderingSystemDB:
             # 6. Users Table (UC-6: Register / UC-7: Authenticate)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS Users (
-                    user_id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                    email            TEXT UNIQUE NOT NULL,
-                    password_hash    TEXT NOT NULL,
-                    full_name        TEXT NOT NULL,
-                    mobile_number    TEXT,
-                    status           TEXT DEFAULT 'ACTIVE'
-                                     CHECK(status IN ('ACTIVE', 'INACTIVE', 'LOCKED')),
-                    failed_attempts  INTEGER DEFAULT 0,
-                    lockout_expires_at DATETIME
+                    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id            TEXT UNIQUE NOT NULL,
+                    email              TEXT UNIQUE NOT NULL,
+                    password_hash      TEXT NOT NULL,
+                    full_name          TEXT NOT NULL,
+                    phone_number       TEXT,
+                    status             TEXT DEFAULT 'PENDING_VERIFICATION',
+                    failed_attempts    INTEGER DEFAULT 0,
+                    lockout_expires_at DATETIME,
+                    created_at         TEXT NOT NULL,
+                    otp_code           TEXT,
+                    otp_expires_at     TEXT
                 )
             """)
 

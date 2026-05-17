@@ -5,6 +5,20 @@ Implements the 4-Padlock Security Chain (REQ6):
   PADLOCK 2 — User Enumeration Guard           (HTTP 401)
   PADLOCK 3 — Unverified Email Guard           (HTTP 403)
   PADLOCK 4 — Happy Path                       (HTTP 200)
+
+Schema (aligned with UC-6 teammate's Users table):
+  id                 INTEGER PRIMARY KEY AUTOINCREMENT   ← internal row PK
+  user_id            TEXT UNIQUE NOT NULL                ← external UUID identifier
+  email              TEXT UNIQUE NOT NULL
+  password_hash      TEXT NOT NULL
+  full_name          TEXT NOT NULL
+  phone_number       TEXT
+  status             TEXT DEFAULT 'PENDING_VERIFICATION'
+  failed_attempts    INTEGER DEFAULT 0
+  lockout_expires_at DATETIME
+  created_at         TEXT NOT NULL
+  otp_code           TEXT
+  otp_expires_at     TEXT
 """
 
 import sqlite3
@@ -29,21 +43,23 @@ def authenticate_user(
     Validates credentials against the Users table.
 
     Returns a dict:
-        { "user_id": int, "email": str, "full_name": str }
+        { "id": int, "user_id": str, "email": str, "full_name": str }
 
     Raises:
-        PermissionError(429_code)  — account temporarily locked (rate limit)
-        PermissionError(401_code)  — bad credentials (enumeration-safe)
-        PermissionError(403_code)  — account not active / email unverified
+        _AuthServiceError(429) — account temporarily locked (rate limit)
+        _AuthServiceError(401) — bad credentials (enumeration-safe)
+        _AuthServiceError(403) — account not active / email unverified
     """
     conn = _get_conn(db_path)
     try:
         cursor = conn.cursor()
 
         # ── Fetch user row ────────────────────────────────────────────────────
+        # Select both `id` (internal PK used for UPDATE) and `user_id` (TEXT
+        # UUID exposed to the client) per the new shared schema.
         cursor.execute(
             """
-            SELECT user_id, email, password_hash, full_name,
+            SELECT id, user_id, email, password_hash, full_name,
                    status, failed_attempts, lockout_expires_at
             FROM Users
             WHERE email = ?
@@ -53,10 +69,10 @@ def authenticate_user(
         row = cursor.fetchone()
 
         # ── PADLOCK 1: Rate Limit (must run BEFORE password check) ────────────
-        # We check lockout on the found row; if no row exists we still must
-        # return a generic 401 (not 429) to avoid enumeration via status codes.
+        # Check lockout on the found row; if no row exists we return a generic
+        # 401 (not 429) to avoid enumeration via status codes.
         if row:
-            (user_id, db_email, password_hash, full_name,
+            (row_id, user_id, db_email, password_hash, full_name,
              status, failed_attempts, lockout_expires_at) = row
 
             if lockout_expires_at:
@@ -74,7 +90,7 @@ def authenticate_user(
         if not row:
             raise _auth_error()
 
-        (user_id, db_email, password_hash, full_name,
+        (row_id, user_id, db_email, password_hash, full_name,
          status, failed_attempts, lockout_expires_at) = row
 
         # Constant-time password check
@@ -84,8 +100,8 @@ def authenticate_user(
         )
 
         if not password_valid:
-            # Increment failed_attempts and maybe lock
-            _record_failed_attempt(conn, user_id, failed_attempts)
+            # Increment failed_attempts and maybe lock — use internal `id`
+            _record_failed_attempt(conn, row_id, failed_attempts)
             conn.commit()
             raise _auth_error()
 
@@ -101,14 +117,15 @@ def authenticate_user(
             """
             UPDATE Users
             SET failed_attempts = 0, lockout_expires_at = NULL
-            WHERE user_id = ?
+            WHERE id = ?
             """,
-            (user_id,),
+            (row_id,),
         )
         conn.commit()
 
         return {
-            "user_id": user_id,
+            "id": row_id,           # internal integer PK (used for JWT sub)
+            "user_id": user_id,     # external TEXT UUID exposed to client
             "email": db_email,
             "full_name": full_name,
         }
@@ -128,7 +145,7 @@ def _get_conn(db_path: str) -> sqlite3.Connection:
 
 def _record_failed_attempt(
     conn: sqlite3.Connection,
-    user_id: int,
+    row_id: int,            # internal `id` column — NOT the TEXT user_id
     current_attempts: int,
 ) -> None:
     """Increments the counter; sets lockout if threshold crossed."""
@@ -145,9 +162,9 @@ def _record_failed_attempt(
         """
         UPDATE Users
         SET failed_attempts = ?, lockout_expires_at = ?
-        WHERE user_id = ?
+        WHERE id = ?
         """,
-        (new_attempts, lockout_expires_at, user_id),
+        (new_attempts, lockout_expires_at, row_id),
     )
 
 
