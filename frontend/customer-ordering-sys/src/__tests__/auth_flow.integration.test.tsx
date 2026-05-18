@@ -67,11 +67,13 @@ let capturedVerifyBody: VerifyOTPRequestBody | null = null;
 
 const server = setupServer(
   http.post('/api/v1/auth/register', async ({ request }) => {
-    capturedRegisterBody = (await request.json()) as RegisterRequestBody;
+    const cloned = request.clone();
+    capturedRegisterBody = (await cloned.json()) as RegisterRequestBody;
     return HttpResponse.json(REGISTER_SUCCESS, { status: 201 });
   }),
   http.post('/api/v1/auth/verify-otp', async ({ request }) => {
-    capturedVerifyBody = (await request.json()) as VerifyOTPRequestBody;
+    const cloned = request.clone();
+    capturedVerifyBody = (await cloned.json()) as VerifyOTPRequestBody;
     return HttpResponse.json(VERIFY_SUCCESS, { status: 200 });
   })
 );
@@ -87,17 +89,17 @@ afterAll(() => server.close());
 // ─── App Stub ─────────────────────────────────────────────────────────────────
 
 const DashboardStub = () => <div>Dashboard Page</div>;
-const LoginStub    = () => <div>Login Page</div>;
+const LoginStub = () => <div>Login Page</div>;
 
 function renderApp() {
   const user = userEvent.setup();
   render(
     <MemoryRouter initialEntries={['/register']}>
       <Routes>
-        <Route path="/register"   element={<RegisterPage />} />
+        <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify-otp" element={<VerifyOTPPage />} />
-        <Route path="/dashboard"  element={<DashboardStub />} />
-        <Route path="/login"      element={<LoginStub />} />
+        <Route path="/dashboard" element={<DashboardStub />} />
+        <Route path="/login" element={<LoginStub />} />
       </Routes>
     </MemoryRouter>
   );
@@ -141,8 +143,8 @@ describe('Auth flow — full integration', () => {
     await waitFor(() => {
       expect(capturedRegisterBody).toEqual<RegisterRequestBody>({
         full_name: REGISTER_FORM.full_name,
-        email:     REGISTER_FORM.email,
-        password:  REGISTER_FORM.password,
+        email: REGISTER_FORM.email,
+        password: REGISTER_FORM.password,
         phone_number: REGISTER_FORM.phone_number,
       });
     });
@@ -185,7 +187,7 @@ describe('Auth flow — full integration', () => {
 
     await waitFor(() => {
       expect(capturedVerifyBody).toEqual<VerifyOTPRequestBody>({
-        email:    REGISTER_FORM.email,
+        email: REGISTER_FORM.email,
         otp_code: VALID_OTP,
       });
     });
@@ -324,10 +326,10 @@ describe('Auth flow — full integration', () => {
     render(
       <MemoryRouter initialEntries={['/verify-otp']}>
         <Routes>
-          <Route path="/register"   element={<RegisterPage />} />
+          <Route path="/register" element={<RegisterPage />} />
           <Route path="/verify-otp" element={<VerifyOTPPage />} />
-          <Route path="/dashboard"  element={<DashboardStub />} />
-          <Route path="/login"      element={<LoginStub />} />
+          <Route path="/dashboard" element={<DashboardStub />} />
+          <Route path="/login" element={<LoginStub />} />
         </Routes>
       </MemoryRouter>
     );

@@ -44,6 +44,9 @@ export const Input: React.FC<InputProps> = ({
         )}
         <input
           id={id}
+          style={{
+            color:"#e4e2eb",
+          }}
           className={`w-full bg-surface-container-lowest/50 border ${
             hasErrors ? 'border-error/50 focus:ring-error/20 focus:border-error' : 'border-outline-variant/30 focus:ring-primary/20 focus:border-primary'
           } rounded-xl py-4 ${Icon ? 'pl-12' : 'pl-4'} ${suffix ? 'pr-12' : 'pr-4'} text-black placeholder:text-on-surface-variant/40 focus:ring-2 transition-all outline-none`}

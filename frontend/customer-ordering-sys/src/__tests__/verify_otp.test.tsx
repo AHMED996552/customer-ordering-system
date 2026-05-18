@@ -54,7 +54,8 @@ let capturedRequestBody: VerifyOTPRequestBody | null = null;
 
 const server = setupServer(
   http.post('/api/v1/auth/verify-otp', async ({ request }) => {
-    capturedRequestBody = (await request.json()) as VerifyOTPRequestBody;
+    const cloned = request.clone();
+    capturedRequestBody = (await cloned.json()) as VerifyOTPRequestBody;
     return HttpResponse.json(VERIFY_SUCCESS_RESPONSE, { status: 200 });
   })
 );

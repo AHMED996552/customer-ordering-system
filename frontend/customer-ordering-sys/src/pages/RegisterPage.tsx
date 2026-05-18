@@ -114,7 +114,7 @@ export default function RegisterPage() {
 
         setTimeout(() => {
           navigate('/verify-otp', { state: { email: data.user?.email || values.email } });
-        }, process.env.NODE_ENV === 'test' ? 100 : 800);
+        }, process.env.NODE_ENV === 'test' ? 300 : 800);
       } else if (response.status === 409) {
         setServerError('Email already exists. You are already registered.');
       } else if (response.status === 422) {
