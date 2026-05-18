@@ -17,19 +17,27 @@ def create_app(config: dict | None = None) -> Flask:
     app.config["DATABASE_PATH"] = os.environ.get(
         "DATABASE_PATH", "customer_ordering_system.db"
     )
-    app.config["JWT_SECRET_KEY"] = os.environ.get(
-        "JWT_SECRET_KEY", "dev-secret-change-me-in-production"
-    )
+    _jwt_secret = os.environ.get("JWT_SECRET_KEY")
+    if not _jwt_secret:
+        raise RuntimeError(
+            "JWT_SECRET_KEY environment variable is not set. "
+            "Set it before starting the server."
+        )
+    app.config["JWT_SECRET_KEY"] = _jwt_secret
     app.config["ENV"] = os.environ.get("FLASK_ENV", "development")
 
     if config:
         app.config.update(config)
 
-    CORS(
-        app,
-        supports_credentials=True,
-        origins=["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000"],
-    )
+    _allowed_origins = [
+        o.strip()
+        for o in os.environ.get(
+            "ALLOWED_ORIGINS",
+            "http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001",
+        ).split(",")
+        if o.strip()
+    ]
+    CORS(app, supports_credentials=True, origins=_allowed_origins)
 
     OrderingSystemDB(db_path=app.config["DATABASE_PATH"])
 
@@ -42,4 +50,5 @@ def create_app(config: dict | None = None) -> Flask:
 
 if __name__ == "__main__":
     flask_app = create_app()
-    flask_app.run(debug=True, port=5000)
+    _debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
+    flask_app.run(debug=_debug, port=int(os.environ.get("PORT", 5000)))
