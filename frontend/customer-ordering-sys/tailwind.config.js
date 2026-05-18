@@ -77,6 +77,7 @@ module.exports = {
         "headline-md": ["Epilogue", "sans-serif"],
         "label-caps": ["Space Grotesk", "sans-serif"],
         "display-xl": ["Epilogue", "sans-serif"],
+        "body": ["Manrope", "sans-serif"],
         "body-md": ["Manrope", "sans-serif"],
         "body-lg": ["Manrope", "sans-serif"]
       },
