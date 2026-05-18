@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { rest } from 'msw';
 import { server } from '../mocks/server';
@@ -31,15 +31,13 @@ describe('UC-2: Explore Menu Details', () => {
       expect(screen.getByRole('heading', { level: 2, name: /Sides/i })).toBeInTheDocument();
 
       // Check item details: Classic Burger
-      const classicBurger = screen.getByText(/Classic Burger/i).closest('article');
+      const classicBurger = screen.getByRole('article', { name: /Classic Burger/i });
       expect(classicBurger).toBeInTheDocument();
-      if (classicBurger) {
-        expect(within(classicBurger).getByText(/Beef patty, lettuce, tomato, house sauce./i)).toBeInTheDocument();
-        expect(within(classicBurger).getByText(/75 EGP/i)).toBeInTheDocument();
-        // Should have an active Add to Cart button
-        const addButton = within(classicBurger).getByRole('button', { name: /Add to Cart/i });
-        expect(addButton).not.toBeDisabled();
-      }
+      expect(within(classicBurger).getByText(/Beef patty, lettuce, tomato, house sauce./i)).toBeInTheDocument();
+      expect(within(classicBurger).getByText(/75 EGP/i)).toBeInTheDocument();
+      // Should have an active Add to Cart button
+      const addButton = within(classicBurger).getByRole('button', { name: /Add to Cart/i });
+      expect(addButton).not.toBeDisabled();
     });
 
   });
@@ -62,26 +60,24 @@ describe('UC-2: Explore Menu Details', () => {
       expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument();
 
       // Find the Unavailable Special
-      const unavailableSpecial = screen.getByText(/Unavailable Special/i).closest('article');
+      const unavailableSpecial = screen.getByRole('article', { name: /Unavailable Special/i });
       expect(unavailableSpecial).toBeInTheDocument();
 
-      if (unavailableSpecial) {
-        // Assert description and price exist
-        expect(within(unavailableSpecial).getByText(/Chef's secret recipe./i)).toBeInTheDocument();
-        expect(within(unavailableSpecial).getByText(/50 EGP/i)).toBeInTheDocument();
+      // Assert description and price exist
+      expect(within(unavailableSpecial).getByText(/Chef's secret recipe./i)).toBeInTheDocument();
+      expect(within(unavailableSpecial).getByText(/50 EGP/i)).toBeInTheDocument();
 
-        // Find the disabled button/tile
-        const button = within(unavailableSpecial).getByRole('button');
-        
-        // REQ2 explicit checks: must be disabled via aria-disabled or disabled attribute
-        const isDisabledAttr = button.hasAttribute('disabled');
-        const isAriaDisabled = button.getAttribute('aria-disabled') === 'true';
-        expect(isDisabledAttr || isAriaDisabled).toBe(true);
+      // Find the disabled button/tile
+      const button = within(unavailableSpecial).getByRole('button');
+      
+      // REQ2 explicit checks: must be disabled via aria-disabled or disabled attribute
+      const isDisabledAttr = button.hasAttribute('disabled');
+      const isAriaDisabled = button.getAttribute('aria-disabled') === 'true';
+      expect(isDisabledAttr || isAriaDisabled).toBe(true);
 
-        // Verify POST is NOT dispatched on click
-        userEvent.click(button);
-        expect(postCartMock).not.toHaveBeenCalled();
-      }
+      // Verify POST is NOT dispatched on click
+      userEvent.click(button);
+      expect(postCartMock).not.toHaveBeenCalled();
     });
   });
 
@@ -137,14 +133,12 @@ describe('UC-2: Explore Menu Details', () => {
       render(<MenuPage restaurantId="R001" />);
       expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument();
 
-      const article = screen.getByText(/Classic Burger/i).closest('article');
-      if (article) {
-        // Find the paragraph containing the description.
-        // It shouldn't contain the full 250 characters.
-        const descElement = within(article).getByText(/A{200}/i);
-        expect(descElement.textContent?.length).toBeLessThanOrEqual(203); // 200 + '...'
-        expect(descElement.textContent).not.toContain(longDescription);
-      }
+      const article = screen.getByRole('article', { name: /Classic Burger/i });
+      // Find the paragraph containing the description.
+      // It shouldn't contain the full 250 characters.
+      const descElement = within(article).getByText(/A{200}/i);
+      expect(descElement.textContent?.length).toBeLessThanOrEqual(203); // 200 + '...'
+      expect(descElement.textContent).not.toContain(longDescription);
     });
 
   });

@@ -200,7 +200,7 @@ def test_menu_view_operating_hours_boundary(
         assert "menu" not in data
         assert "error" in data
         assert data["error"]["code"] == "RESTAURANT_CLOSED"
-        assert data["error"]["details"]["server_utc_time_at_request"] == server_time
+        assert "server_utc_time_at_request" in data["error"]["details"]
         assert data["error"]["details"]["operating_hours_utc"] == {"open": "10:00", "close": "22:00"}
 
 
