@@ -13,4 +13,7 @@ def create_app(testing: bool = False) -> Flask:
     from app.routes.restaurants import bp as restaurants_bp
     app.register_blueprint(restaurants_bp)
 
+    from app.routes.cart import bp as cart_bp
+    app.register_blueprint(cart_bp)
+
     return app
