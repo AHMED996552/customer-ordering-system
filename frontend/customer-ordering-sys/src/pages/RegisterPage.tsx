@@ -317,13 +317,13 @@ export default function RegisterPage() {
               )}
             </button>
 
-            <div className="relative flex items-center py-4">
+            {/* <div className="relative flex items-center py-4">
               <div className="flex-grow border-t border-outline-variant/20"></div>
               <span className="flex-shrink mx-4 font-label-caps text-label-caps text-on-surface-variant/60">
                 OR CONTINUE WITH
               </span>
               <div className="flex-grow border-t border-outline-variant/20"></div>
-            </div>
+            </div> */}
           </form>
           
           <footer className="mt-lg text-center">
@@ -331,7 +331,7 @@ export default function RegisterPage() {
               Already have an account?{' '}
               <a
                 className="text-primary font-bold hover:underline underline-offset-4 transition-all"
-                href="#login"
+                href="/login"
               >
                 Login
               </a>

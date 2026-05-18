@@ -66,6 +66,8 @@ def register():
         full_name=full_name,
         phone_number=phone_number,
         status="PENDING_VERIFICATION",
+        failed_attempts=0,
+        lockout_expires_at=None,
         created_at=created_at,
         otp_code=otp_code,
         otp_expires_at=otp_expires_at

@@ -14,13 +14,13 @@ from flask import Blueprint, request, jsonify, make_response, current_app
 
 from backend.services.auth_service import authenticate_user, _AuthServiceError
 
-auth_bp = Blueprint("auth", __name__, url_prefix="/api/v1/auth")
+auth_login_bp = Blueprint("auth_login", __name__, url_prefix="/api/v1/auth")
 
 _JWT_ALGORITHM = "HS256"
 _TOKEN_TTL_HOURS = 8
 
 
-@auth_bp.route("/login", methods=["POST"])
+@auth_login_bp.route("/login", methods=["POST"])
 def login():
     """
     POST /api/v1/auth/login
@@ -39,9 +39,7 @@ def login():
     if not email or not password:
         return jsonify({"error": "Email and password are required."}), 400
 
-    db_path: str = current_app.config.get(
-        "DATABASE_PATH", "customer_ordering_system.db"
-    )
+    db_path: str = current_app.config.get("DATABASE_PATH")
 
     try:
         user = authenticate_user(db_path, email, password)
@@ -49,7 +47,7 @@ def login():
         return jsonify({"error": str(exc)}), exc.status_code
 
     # ── Build JWT (stored in cookie, NOT in body) ─────────────────────────────
-    secret_key: str = current_app.config.get("JWT_SECRET_KEY", "dev-secret-change-me")
+    secret_key: str = current_app.config.get("JWT_SECRET_KEY")
     token_payload = {
         "sub": user["id"],          # internal integer PK — never exposed to client
         "uid": user["user_id"],     # TEXT UUID — safe to embed in token claims

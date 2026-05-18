@@ -6,7 +6,8 @@ import os
 from flask import Flask
 from flask_cors import CORS
 from database.schema import OrderingSystemDB
-from backend.routes.auth_routes import auth_bp
+from backend.routes.auth import auth_bp
+from backend.routes.auth_routes import auth_login_bp
 
 
 def create_app(config: dict | None = None) -> Flask:
@@ -37,6 +38,8 @@ def create_app(config: dict | None = None) -> Flask:
 
     # ── Register Blueprints ───────────────────────────────────────────────────
     app.register_blueprint(auth_bp)
+    app.register_blueprint(auth_login_bp)
+
 
     return app
 

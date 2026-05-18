@@ -226,12 +226,12 @@ const LoginPage: React.FC = () => {
                   >
                     PASSWORD
                   </label>
-                  <a
+                  {/* <a
                     href="#"
                     className="text-[11px] font-semibold tracking-widest text-primary hover:text-primary-fixed-dim transition-colors"
                   >
                     FORGOT PASSWORD?
-                  </a>
+                  </a> */}
                 </div>
                 <div className="relative group">
                   <span
@@ -301,7 +301,7 @@ const LoginPage: React.FC = () => {
             </form>
 
             {/* Divider */}
-            <div className="flex items-center my-6 gap-4">
+            {/* <div className="flex items-center my-6 gap-4">
               <div
                 className="h-px flex-1"
                 style={{ background: "rgba(71,68,78,0.20)" }}
@@ -316,10 +316,10 @@ const LoginPage: React.FC = () => {
                 className="h-px flex-1"
                 style={{ background: "rgba(71,68,78,0.20)" }}
               />
-            </div>
+            </div> */}
 
             {/* Social buttons */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* <div className="grid grid-cols-2 gap-4">
               <button
                 id="apple-login-btn"
                 type="button"
@@ -376,7 +376,7 @@ const LoginPage: React.FC = () => {
                   GOOGLE
                 </span>
               </button>
-            </div>
+            </div> */}
           </div>
 
           {/* Footer */}
