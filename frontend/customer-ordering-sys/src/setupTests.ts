@@ -40,21 +40,12 @@ const { MessageChannel, MessagePort } = require('node:worker_threads');
 global.MessageChannel = MessageChannel;
 global.MessagePort = MessagePort;
 
-// Polyfill Fetch API globals in Jest JSDOM using undici (recommended for MSW v2)
-const { fetch, Request, Response, Headers, FormData } = require('undici');
-
-global.fetch = fetch;
-global.Request = Request;
-global.Response = Response;
-global.Headers = Headers;
-global.FormData = FormData;
-
-if (typeof window !== 'undefined') {
-  (window as any).fetch = fetch;
-  (window as any).Request = Request;
-  (window as any).Response = Response;
-  (window as any).Headers = Headers;
-  (window as any).FormData = FormData;
+// Global fetch mock — individual tests override with jest.fn() as needed.
+// Using a stub avoids undici/jsdom incompatibilities (clearImmediate, markResourceTiming).
+if (typeof global.fetch === 'undefined') {
+  global.fetch = jest.fn(() =>
+    Promise.reject(new Error('fetch not mocked for this test'))
+  ) as any;
 }
 
 

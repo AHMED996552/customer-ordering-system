@@ -4,15 +4,26 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import App from '../App';
+import { MemoryRouter } from 'react-router-dom';
+import { CartProvider } from '../context/CartContext';
+import MenuPage from '../pages/MenuPage';
+
+const renderMenuPage = () =>
+  render(
+    <CartProvider>
+      <MemoryRouter>
+        <MenuPage />
+      </MemoryRouter>
+    </CartProvider>
+  );
 
 describe('Cart Validation', () => {
   test('rejects quantity below 1', async () => {
     const user = userEvent.setup();
 
-    render(<App />);
+    renderMenuPage();
 
-    const input = screen.getByRole('spinbutton');
+    const input = screen.getAllByRole('spinbutton')[0];
     await user.clear(input);
     await user.type(input, '0');
 
@@ -22,7 +33,7 @@ describe('Cart Validation', () => {
   });
 
   test('disables unavailable items', () => {
-    render(<App />);
+    renderMenuPage();
 
     const unavailableButton = screen.getByRole('button', { name: /unavailable/i });
 

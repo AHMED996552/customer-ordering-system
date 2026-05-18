@@ -22,7 +22,7 @@ describe('Cart API', () => {
     await addToCart({ itemId: 'I001', quantity: 2 });
 
     expect(mockedFetch).toHaveBeenCalledWith(
-      'http://localhost:5000/cart',
+      'http://localhost:8000/api/v1/cart/items',
       expect.any(Object),
     );
   });
