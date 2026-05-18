@@ -1,6 +1,11 @@
 """
 auth_service.py — UC-7: Authenticate User Identity  (REQ6)
 
+*** TDD SKELETON — PHASE 1 (RED) ***
+All function bodies are intentional stubs. This file is syntactically valid
+but contains NO business logic so that all 73 tests fail, demonstrating that
+the test suite catches missing/incorrect implementation before code is written.
+
 Implements the 4-Padlock Security Chain:
   PADLOCK 1 — Rate Limiting / Account Lockout  → HTTP 429
   PADLOCK 2 — User Enumeration Guard           → HTTP 401
@@ -54,12 +59,10 @@ def hash_password(plain: str) -> str:
 
     Returns the UTF-8 decoded hash string ready to be stored in the DB.
     Raises ValueError for empty input.
+
+    TODO: Implement — currently a stub.
     """
-    if not plain:
-        raise ValueError("Password must not be empty.")
-    salt = bcrypt.gensalt(rounds=12)
-    hashed = bcrypt.hashpw(plain.encode("utf-8"), salt)
-    return hashed.decode("utf-8")
+    raise NotImplementedError("hash_password is not yet implemented.")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
@@ -67,14 +70,10 @@ def verify_password(plain: str, hashed: str) -> bool:
     Constant-time comparison of *plain* against the stored bcrypt *hashed* string.
 
     Returns True if they match, False otherwise.
-    Never raises on mismatched hash — only raises if arguments are blank.
+
+    TODO: Implement — currently a stub.
     """
-    if not plain or not hashed:
-        return False
-    try:
-        return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
-    except Exception:
-        return False
+    raise NotImplementedError("verify_password is not yet implemented.")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -85,12 +84,9 @@ def generate_jwt(payload: dict, secret: str) -> str:
     """
     Sign *payload* with HMAC-SHA256 and return the encoded JWT string.
 
-    The caller is responsible for adding 'exp'/'iat' claims.
-    Raises ValueError when *secret* is falsy.
+    TODO: Implement — currently a stub.
     """
-    if not secret:
-        raise ValueError("JWT secret must not be empty.")
-    return pyjwt.encode(payload, secret, algorithm=JWT_ALGORITHM)
+    raise NotImplementedError("generate_jwt is not yet implemented.")
 
 
 def decode_jwt(token: str, secret: str) -> dict:
@@ -98,34 +94,19 @@ def decode_jwt(token: str, secret: str) -> dict:
     Validate and decode a JWT string.
 
     Returns the decoded payload dict on success.
-    Raises:
-        jwt.ExpiredSignatureError  — token has expired
-        jwt.InvalidTokenError      — any other validation failure
-        ValueError                 — blank token or secret
+
+    TODO: Implement — currently a stub.
     """
-    if not token or not secret:
-        raise ValueError("Token and secret must not be empty.")
-    return pyjwt.decode(token, secret, algorithms=[JWT_ALGORITHM])
+    raise NotImplementedError("decode_jwt is not yet implemented.")
 
 
 def build_token_payload(user: dict) -> dict:
     """
     Construct the standard JWT claims dict for a successfully authenticated user.
 
-    Embeds:
-      sub  — internal integer PK (never returned to the client in JSON)
-      uid  — external TEXT UUID (safe to embed in token claims)
-      email
-      iat / exp
+    TODO: Implement — currently a stub.
     """
-    now = datetime.now(timezone.utc)
-    return {
-        "sub": str(user["id"]),    # RFC 7519 §4.1.2: sub MUST be a string
-        "uid": user["user_id"],
-        "email": user["email"],
-        "iat": now,
-        "exp": now + timedelta(hours=JWT_TTL_HOURS),
-    }
+    raise NotImplementedError("build_token_payload is not yet implemented.")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -147,83 +128,10 @@ def authenticate_user(
         _AuthServiceError(429) — account temporarily locked  (Padlock 1)
         _AuthServiceError(401) — bad credentials             (Padlock 2)
         _AuthServiceError(403) — account not ACTIVE          (Padlock 3)
+
+    TODO: Implement — currently a stub.
     """
-    conn = _get_conn(db_path)
-    try:
-        cursor = conn.cursor()
-
-        cursor.execute(
-            """
-            SELECT id, user_id, email, password_hash, full_name,
-                   status, failed_attempts, lockout_expires_at
-            FROM Users
-            WHERE email = ?
-            """,
-            (email.strip().lower(),),
-        )
-        row = cursor.fetchone()
-
-        # ── PADLOCK 1: Rate Limit ─────────────────────────────────────────────
-        # Must run BEFORE the password check so a locked account stays locked
-        # even when the correct password is eventually supplied.
-        # We only check if the row exists; a missing email always yields 401.
-        if row:
-            (row_id, user_id, db_email, password_hash, full_name,
-             status, failed_attempts, lockout_expires_at) = row
-
-            if lockout_expires_at:
-                lockout_dt = _parse_dt(lockout_expires_at)
-                if lockout_dt and datetime.now(timezone.utc) < lockout_dt:
-                    remaining = (
-                        int((lockout_dt - datetime.now(timezone.utc)).total_seconds() / 60) + 1
-                    )
-                    raise _rate_limit_error(
-                        f"Too many failed attempts. "
-                        f"Account locked for ~{remaining} more minute(s)."
-                    )
-
-        # ── PADLOCK 2: User Enumeration Guard ─────────────────────────────────
-        # Unknown e-mail → same generic 401 as wrong password
-        if not row:
-            raise _auth_error()
-
-        (row_id, user_id, db_email, password_hash, full_name,
-         status, failed_attempts, lockout_expires_at) = row
-
-        password_valid = verify_password(password, password_hash)
-
-        if not password_valid:
-            _record_failed_attempt(conn, row_id, failed_attempts)
-            conn.commit()
-            raise _auth_error()
-
-        # ── PADLOCK 3: Unverified / Inactive Account ──────────────────────────
-        if status != "ACTIVE":
-            raise _forbidden_error(
-                "Your account is not active. "
-                "Please verify your email or contact support."
-            )
-
-        # ── PADLOCK 4: Happy Path ─────────────────────────────────────────────
-        cursor.execute(
-            """
-            UPDATE Users
-            SET failed_attempts = 0, lockout_expires_at = NULL
-            WHERE id = ?
-            """,
-            (row_id,),
-        )
-        conn.commit()
-
-        return {
-            "id": row_id,
-            "user_id": user_id,
-            "email": db_email,
-            "full_name": full_name,
-        }
-
-    finally:
-        conn.close()
+    raise NotImplementedError("authenticate_user is not yet implemented.")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -242,34 +150,21 @@ def _record_failed_attempt(
     row_id: int,
     current_attempts: int,
 ) -> None:
-    """Increment failed_attempts and set lockout_expires_at when threshold is hit."""
-    new_attempts = current_attempts + 1
-    lockout_expires_at: Optional[str] = None
+    """
+    Increment failed_attempts and set lockout_expires_at when threshold is hit.
 
-    if new_attempts >= MAX_FAILED_ATTEMPTS:
-        lockout_dt = datetime.now(timezone.utc) + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
-        lockout_expires_at = lockout_dt.strftime("%Y-%m-%d %H:%M:%S")
-
-    conn.execute(
-        """
-        UPDATE Users
-        SET failed_attempts = ?, lockout_expires_at = ?
-        WHERE id = ?
-        """,
-        (new_attempts, lockout_expires_at, row_id),
-    )
+    TODO: Implement — currently a stub.
+    """
+    raise NotImplementedError("_record_failed_attempt is not yet implemented.")
 
 
 def _parse_dt(value: str) -> Optional[datetime]:
-    """Parse a '%Y-%m-%d %H:%M:%S' UTC string → timezone-aware datetime."""
-    if not value:
-        return None
-    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S"):
-        try:
-            return datetime.strptime(value, fmt).replace(tzinfo=timezone.utc)
-        except ValueError:
-            continue
-    return None
+    """
+    Parse a '%Y-%m-%d %H:%M:%S' UTC string → timezone-aware datetime.
+
+    TODO: Implement — currently a stub.
+    """
+    raise NotImplementedError("_parse_dt is not yet implemented.")
 
 
 # ── Exception hierarchy ────────────────────────────────────────────────────────
