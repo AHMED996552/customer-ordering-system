@@ -33,6 +33,25 @@ interface ApiError {
   };
 }
 
+const normalizeApiError = (err: unknown): ApiError => {
+  if (
+    err &&
+    typeof err === 'object' &&
+    'error' in err &&
+    typeof (err as any).error === 'object' &&
+    (err as any).error !== null
+  ) {
+    return err as ApiError;
+  }
+
+  return {
+    error: {
+      code: 'UNKNOWN_ERROR',
+      message: 'An unexpected error occurred.',
+    },
+  };
+};
+
 interface MenuPageProps {
   restaurantId: string;
 }
@@ -49,7 +68,7 @@ const MenuPage: React.FC<MenuPageProps> = ({ restaurantId }) => {
         if (!res.ok) throw json;
         setData(json);
       })
-      .catch((err) => setError(err))
+      .catch((err: unknown) => setError(normalizeApiError(err)))
       .finally(() => setLoading(false));
   }, [restaurantId]);
 
@@ -79,9 +98,9 @@ const MenuPage: React.FC<MenuPageProps> = ({ restaurantId }) => {
                 <span className="text-xl font-bold tracking-tight text-on-surface">Luxe<span className="text-primary">Eats</span></span>
               </div>
               <nav className="hidden md:flex gap-md">
-                <a className="font-body-md text-primary font-bold border-b-2 border-primary transition-all duration-300" href="#">Explore</a>
-                <a className="font-body-md text-on-surface-variant hover:text-primary transition-all duration-300" href="#">Restaurants</a>
-                <a className="font-body-md text-on-surface-variant hover:text-primary transition-all duration-300" href="#">Connoisseur Club</a>
+                <a className="font-body-md text-primary font-bold border-b-2 border-primary transition-all duration-300" href="/">Explore</a>
+                <a className="font-body-md text-on-surface-variant hover:text-primary transition-all duration-300" href="/restaurants">Restaurants</a>
+                <a className="font-body-md text-on-surface-variant hover:text-primary transition-all duration-300" href="/club">Connoisseur Club</a>
               </nav>
             </div>
             <div className="flex items-center gap-md">
@@ -154,7 +173,7 @@ const MenuPage: React.FC<MenuPageProps> = ({ restaurantId }) => {
               <h2 id={`category-${section.category}`} className="font-headline-md text-headline-md text-on-surface mb-md">{section.category}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-md">
                 {section.items.map((item) => (
-                  <article key={item.item_id} className={`glass-card rounded-xl overflow-hidden group transition-all duration-300 shadow-[0_24px_48px_rgba(1,31,75,0.12)] ${item.available ? 'cursor-pointer hover:scale-[1.02]' : 'opacity-50 grayscale'}`}>
+                  <article key={item.item_id} aria-label={item.name} className={`glass-card rounded-xl overflow-hidden group transition-all duration-300 shadow-[0_24px_48px_rgba(1,31,75,0.12)] ${item.available ? 'cursor-pointer hover:scale-[1.02]' : 'opacity-50 grayscale'}`}>
                     <div className="relative h-64 overflow-hidden">
                       <img className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={item.name} src="https://lh3.googleusercontent.com/aida-public/AB6AXuBuqAEMBaXSPHwFRUGh5dDEiiujM9eSgGLU9w35tQ5A2Z62tPncW3A_7THDczXnZ_6ubNI6giQ5gWreJhvgbdFonje1A3sttPQM5Y0ttiSfWyLnmhuRMOfKN3Q_hejrHmdUoPfPs9NUB5w8Di-2lDXg0PffRqD64rMOOMkQjGT74uJ6to_t87MaIo-hMqg4hGbYFTY5-QwliSZrY795gxn-sH4RZfSe-WHBzhTDfcRj8ildj4iZZ_DHnNrJLpizqVzJzFnGoxZ5-5o" />
                       <div className="absolute top-sm right-sm">

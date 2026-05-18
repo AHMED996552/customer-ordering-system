@@ -1,6 +1,7 @@
 import re
 from flask import Blueprint, jsonify
-import backend.services.menu_service as menu_service
+from datetime import datetime, timezone
+from backend.services.menu_service import get_menu_for_restaurant
 from backend.repositories.restaurant_repo import get_operating_hours
 import backend.utils.time as time_utils
 
@@ -26,7 +27,8 @@ def get_restaurant_menu(restaurant_id: str):
         }), 404
 
     # 1. Capture current UTC time
-    current_utc = time_utils.server_utc_now()
+    current_utc_hhmm = time_utils.server_utc_now()
+    current_utc_iso = datetime.now(timezone.utc).isoformat()
     
     # 2. Fetch operating hours
     hours = get_operating_hours(restaurant_id)
@@ -39,15 +41,15 @@ def get_restaurant_menu(restaurant_id: str):
         }), 404
         
     # 3. Boundary validation (REQ19)
-    if not is_time_between(current_utc, hours['open'], hours['close']):
+    if not is_time_between(current_utc_hhmm, hours['open'], hours['close']):
         return jsonify({
             "error": {
                 "code": "RESTAURANT_CLOSED",
-                "message": "Burger Palace is currently closed and cannot accept orders.",
+                "message": "The restaurant is currently closed and cannot accept orders.",
                 "details": {
                     "restaurant_id": restaurant_id,
                     "operating_hours_utc": hours,
-                    "server_utc_time_at_request": current_utc
+                    "server_utc_time_at_request": current_utc_iso
                 }
             }
         }), 403
@@ -63,6 +65,6 @@ def get_restaurant_menu(restaurant_id: str):
         }), 404
         
     # 5. Inject server_utc_time_at_request
-    menu_data["server_utc_time_at_request"] = current_utc
+    menu_data["server_utc_time_at_request"] = current_utc_iso
     
     return jsonify(menu_data), 200
