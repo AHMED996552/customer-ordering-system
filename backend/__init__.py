@@ -19,6 +19,7 @@ from flask_cors import CORS
 from backend.extensions import db
 from backend.routes.auth import auth_bp
 from backend.routes.auth_routes import auth_login_bp
+from backend.routes.menu import menu_bp
 from backend.config import Config
 
 def create_app(config_class=Config):
@@ -39,5 +40,6 @@ def create_app(config_class=Config):
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(auth_login_bp)
+    app.register_blueprint(menu_bp)
 
     return app

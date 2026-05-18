@@ -8,6 +8,7 @@ from flask_cors import CORS
 from database.schema import OrderingSystemDB
 from backend.routes.auth import auth_bp
 from backend.routes.auth_routes import auth_login_bp
+from backend.routes.menu import menu_bp
 
 
 def create_app(config: dict | None = None) -> Flask:
@@ -15,10 +16,10 @@ def create_app(config: dict | None = None) -> Flask:
 
     # ── Defaults ──────────────────────────────────────────────────────────────
     app.config["DATABASE_PATH"] = os.environ.get(
-        "DATABASE_PATH", "customer_ordering_system.db"
+        "DATABASE_PATH"
     )
     app.config["JWT_SECRET_KEY"] = os.environ.get(
-        "JWT_SECRET_KEY", "dev-secret-change-me-in-production"
+        "JWT_SECRET_KEY"
     )
     app.config["ENV"] = os.environ.get("FLASK_ENV", "development")
 
@@ -39,6 +40,7 @@ def create_app(config: dict | None = None) -> Flask:
     # ── Register Blueprints ───────────────────────────────────────────────────
     app.register_blueprint(auth_bp)
     app.register_blueprint(auth_login_bp)
+    app.register_blueprint(menu_bp)
 
 
     return app

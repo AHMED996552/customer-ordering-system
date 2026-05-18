@@ -4,10 +4,11 @@ import { AuthProvider, useAuth } from "./hooks/AuthContext";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import VerifyOTPPage from "./pages/VerifyOTPPage";
+import MenuPage from "./pages/MenuPage";
 
 const RootRedirect: React.FC = () => {
   const { isAuthenticated } = useAuth();
-  return <Navigate to={isAuthenticated ? "/dashboard" : "/register"} replace />;
+  return <Navigate to={isAuthenticated ? "/menu" : "/register"} replace />;
 };
 
 const DashboardPage: React.FC = () => {
@@ -73,6 +74,7 @@ export default function App() {
           <Route path="/verify-otp" element={<VerifyOTPPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/menu" element={<MenuPage restaurantId={"1"}/>} />
           {/* Fallback to register */}
           <Route path="*" element={<Navigate to="/register" replace />} />
         </Routes>
