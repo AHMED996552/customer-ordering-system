@@ -1,23 +1,14 @@
-import logo from './logo.svg';
-import './App.css';
+import React from 'react';
+import OrderTrackingPage from './pages/OrderTrackingPage';
 
 function App() {
+  // Read orderId from the URL (e.g. ?orderId=ORD-20260510-001) or default to a dummy one
+  const params = new URLSearchParams(window.location.search);
+  const orderId = params.get('orderId') || 'ORD-20260510-001';
+
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+      <OrderTrackingPage orderId={orderId} />
     </div>
   );
 }

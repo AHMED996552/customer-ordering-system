@@ -2,6 +2,7 @@
   "name": "customer-ordering-sys",
   "version": "0.1.0",
   "private": true,
+  "proxy": "http://127.0.0.1:5000",
   "dependencies": {
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
@@ -42,5 +43,13 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "typescript": "^6.0.3"
+  },
+  "jest": {
+    "testMatch": [
+      "<rootDir>/src/**/*.test.ts",
+      "<rootDir>/src/**/*.test.tsx",
+      "<rootDir>/src/**/*.spec.ts",
+      "<rootDir>/src/**/*.spec.tsx"
+    ]
   }
 }
