@@ -4,3 +4,4 @@ __pycache__
 restaurant_system.db
 
 .vscode
+.db
