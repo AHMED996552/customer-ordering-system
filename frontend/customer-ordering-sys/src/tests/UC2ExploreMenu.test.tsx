@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { rest } from 'msw';
+import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
 import { 
   MOCK_MENU_SUCCESS_RESPONSE, 
@@ -50,9 +50,9 @@ describe('UC-2: Explore Menu Details', () => {
       // Mock the POST endpoint to ensure it's not called
       const postCartMock = jest.fn();
       server.use(
-        rest.post('/api/v1/cart/items', (req, res, ctx) => {
+        http.post('/api/v1/cart/items', () => {
           postCartMock();
-          return res(ctx.status(200));
+          return HttpResponse.json(null, { status: 200 });
         })
       );
 
@@ -129,8 +129,8 @@ describe('UC-2: Explore Menu Details', () => {
       customResponse.menu[0].items[0].description = longDescription;
 
       server.use(
-        rest.get('/api/v1/restaurants/:id/menu', (req, res, ctx) => {
-          return res(ctx.status(200), ctx.json(customResponse));
+        http.get('/api/v1/restaurants/:id/menu', () => {
+          return HttpResponse.json(customResponse, { status: 200 });
         })
       );
 

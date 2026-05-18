@@ -1,6 +1,6 @@
 import re
 from flask import Blueprint, jsonify
-from backend.services.menu_service import get_menu_for_restaurant
+import backend.services.menu_service as menu_service
 from backend.repositories.restaurant_repo import get_operating_hours
 import backend.utils.time as time_utils
 
@@ -53,7 +53,7 @@ def get_restaurant_menu(restaurant_id: str):
         }), 403
         
     # 4. Fetch menu data
-    menu_data = get_menu_for_restaurant(restaurant_id)
+    menu_data = menu_service.get_menu_for_restaurant(restaurant_id)
     if not menu_data:
         return jsonify({
             "error": {
