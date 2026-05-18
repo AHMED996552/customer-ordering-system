@@ -4,6 +4,64 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Reset ──────────────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* ── Dark-mode body defaults ─────────────────────────────────────────────────── */
+body {
+  background-color: #0f0f13;
+  color: #e4e2eb;
+  font-family: 'Manrope', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+}
+
+/* ── Glass island card ──────────────────────────────────────────────────────── */
+.glass-island {
+  background: rgba(31, 31, 35, 0.4);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(175, 198, 252, 0.15);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 16px 24px -2px rgba(0, 0, 0, 0.2),
+    0 48px 64px -12px rgba(0, 0, 0, 0.4);
+}
+
+/* ── Shimmer button ─────────────────────────────────────────────────────────── */
+.shimmer-btn {
+  background: linear-gradient(90deg, #afc6fc 0%, #d8e2ff 50%, #afc6fc 100%);
+  background-size: 200% auto;
+  color: #0e2a64;
+  transition: background-position 0.4s ease, box-shadow 0.3s ease, transform 0.15s ease;
+}
+.shimmer-btn:hover {
+  background-position: right center;
+}
+.shimmer-btn:active {
+  transform: scale(0.98);
+}
+
+/* ── Inner glow border ──────────────────────────────────────────────────────── */
+.inner-glow {
+  box-shadow: inset 0 1px 1px 0 rgba(175, 198, 252, 0.2);
+}
+
+/* ── Material Symbols icon helper ───────────────────────────────────────────── */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+  user-select: none;
+  vertical-align: middle;
+
 @layer base {
   body {
     @apply bg-surface text-on-surface font-body antialiased;

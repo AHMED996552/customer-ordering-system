@@ -1,3 +1,7 @@
+import React from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider } from "./hooks/AuthContext";
+import LoginPage from "./pages/LoginPage";
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import RegisterPage from './pages/RegisterPage';
@@ -6,23 +10,17 @@ import { ShoppingBag } from 'lucide-react';
 
 const DashboardPage: React.FC = () => {
   return (
-    <div className="min-h-screen bg-background text-on-background flex flex-col items-center justify-center p-md">
-      <div className="glass-island max-w-lg w-full rounded-[32px] p-xl text-center space-y-md border border-primary/20 relative overflow-hidden">
-        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-primary/30 to-transparent"></div>
-        <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto border border-primary/20">
-          <span className="material-symbols-outlined text-primary text-3xl"><ShoppingBag /></span>
-        </div>
-        <h2 className="font-headline-md text-headline-md text-on-surface">Welcome to LuxeEats</h2>
-        <p className="font-body-md text-on-surface-variant">
-          Your private culinary access is successfully activated. Explore exclusive gastronomy, custom private chefs, and hidden dining gems.
-        </p>
-        <div className="pt-md">
-          <button className="shimmer-btn px-6 py-3 rounded-xl text-on-primary font-bold shadow-[0_8px_30px_rgba(175,198,252,0.3)] transition-all">
-            Explore Dashboard
-          </button>
-        </div>
-      </div>
-    </div>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* UC-7: Login */}
+          <Route path="/login" element={<LoginPage />} />
+
+          {/* Catch-all: send to login (replace with dashboard once built) */}
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 };
 
