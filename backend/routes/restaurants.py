@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify
-from app.services.restaurant_service import get_all_restaurants
+from backend.services.restaurant_service import get_all_restaurants
 
 bp = Blueprint("restaurants", __name__)
 

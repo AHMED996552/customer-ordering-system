@@ -9,6 +9,7 @@ from database.schema import OrderingSystemDB
 from backend.routes.auth import auth_bp
 from backend.routes.auth_routes import auth_login_bp
 from backend.routes.menu import menu_bp
+from backend.routes.restaurants import bp as restaurants_bp
 
 
 def create_app(config: dict | None = None) -> Flask:
@@ -41,6 +42,7 @@ def create_app(config: dict | None = None) -> Flask:
     app.register_blueprint(auth_bp)
     app.register_blueprint(auth_login_bp)
     app.register_blueprint(menu_bp)
+    app.register_blueprint(restaurants_bp)
 
 
     return app

@@ -1,7 +1,7 @@
 import re
 from flask import Blueprint, jsonify
 from datetime import datetime, timezone
-from backend.services.menu_service import get_menu_for_restaurant
+import backend.services.menu_service as menu_service
 from backend.repositories.restaurant_repo import get_operating_hours
 import backend.utils.time as time_utils
 
