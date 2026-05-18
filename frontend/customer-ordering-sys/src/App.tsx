@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from "./hooks/AuthContext";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import VerifyOTPPage from "./pages/VerifyOTPPage";
+import OrderDetailsCancellation from "./pages/OrderDetailsCancellation";
 
 const RootRedirect: React.FC = () => {
   const { isAuthenticated } = useAuth();
@@ -73,6 +74,17 @@ export default function App() {
           <Route path="/verify-otp" element={<VerifyOTPPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route 
+            path="/cancel-order" 
+            element={
+              <OrderDetailsCancellation 
+                orderId="ORD-20260510-001"
+                initialStatus="PENDING"
+                createdAtUtc={new Date().toISOString()}
+                totalAmount={150.00}
+              />
+            } 
+          />
           {/* Fallback to register */}
           <Route path="*" element={<Navigate to="/register" replace />} />
         </Routes>

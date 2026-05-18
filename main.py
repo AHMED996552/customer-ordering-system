@@ -8,6 +8,8 @@ from flask_cors import CORS
 from database.schema import OrderingSystemDB
 from backend.routes.auth import auth_bp
 from backend.routes.auth_routes import auth_login_bp
+from backend.routes.order_routes import order_bp
+from backend.extensions import db
 
 
 def create_app(config: dict | None = None) -> Flask:
@@ -17,6 +19,9 @@ def create_app(config: dict | None = None) -> Flask:
     app.config["DATABASE_PATH"] = os.environ.get(
         "DATABASE_PATH", "customer_ordering_system.db"
     )
+    app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{os.path.abspath(app.config['DATABASE_PATH'])}"
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    
     app.config["JWT_SECRET_KEY"] = os.environ.get(
         "JWT_SECRET_KEY", "dev-secret-change-me-in-production"
     )
@@ -35,10 +40,12 @@ def create_app(config: dict | None = None) -> Flask:
 
     # ── Initialize DB (creates tables if not exist) ───────────────────────────
     OrderingSystemDB(db_path=app.config["DATABASE_PATH"])
+    db.init_app(app)
 
     # ── Register Blueprints ───────────────────────────────────────────────────
     app.register_blueprint(auth_bp)
     app.register_blueprint(auth_login_bp)
+    app.register_blueprint(order_bp)
 
 
     return app
