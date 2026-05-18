@@ -1,8 +1,13 @@
-# conftest.py — root-level pytest configuration
-# Adds the project root to sys.path so imports like
-# `from backend.services.auth_service import ...` work without install.
-
 import sys
-import os
+import backend
+import backend.models
+import backend.models.user
+import backend.services
+import backend.services.email
 
-sys.path.insert(0, os.path.dirname(__file__))
+# Map 'myapp' modules to 'backend' for pytest execution
+sys.modules['myapp'] = backend
+sys.modules['myapp.models'] = backend.models
+sys.modules['myapp.models.user'] = backend.models.user
+sys.modules['myapp.services'] = backend.services
+sys.modules['myapp.services.email'] = backend.services.email

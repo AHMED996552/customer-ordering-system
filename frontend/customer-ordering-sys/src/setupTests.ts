@@ -3,27 +3,58 @@
 // expect(element).toHaveTextContent(/react/i)
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
-
-// ── Polyfills required by React Router v7 + MSW v2 in CRA's older jsdom ───────
 import { TextEncoder, TextDecoder } from 'util';
-// @ts-ignore
-global.TextEncoder = TextEncoder;
-// @ts-ignore
-global.TextDecoder = TextDecoder;
 
-// Polyfill Web Streams API (ReadableStream, WritableStream, TransformStream)
-// required by @mswjs/interceptors used by MSW v2.
-const { ReadableStream, WritableStream, TransformStream } = require('stream/web');
-if (typeof global.ReadableStream === 'undefined') {
-  // @ts-ignore
-  global.ReadableStream = ReadableStream;
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder as any;
+
+class MockBroadcastChannel {
+  name: string;
+  constructor(name: string) {
+    this.name = name;
+  }
+  postMessage() {}
+  onmessage() {}
+  close() {}
+  addEventListener() {}
+  removeEventListener() {}
+  dispatchEvent() { return true; }
 }
-if (typeof global.WritableStream === 'undefined') {
-  // @ts-ignore
-  global.WritableStream = WritableStream;
+global.BroadcastChannel = MockBroadcastChannel as any;
+
+try {
+  const { ReadableStream, TransformStream, WritableStream } = require('stream/web');
+  if (typeof global.ReadableStream === 'undefined') {
+    global.ReadableStream = ReadableStream as any;
+  }
+  if (typeof global.TransformStream === 'undefined') {
+    global.TransformStream = TransformStream as any;
+  }
+  if (typeof global.WritableStream === 'undefined') {
+    global.WritableStream = WritableStream as any;
+  }
+} catch (e) {}
+
+// Polyfill MessageChannel and MessagePort for undici compatibility in Jest JSDOM
+const { MessageChannel, MessagePort } = require('node:worker_threads');
+global.MessageChannel = MessageChannel;
+global.MessagePort = MessagePort;
+
+// Polyfill Fetch API globals in Jest JSDOM using undici (recommended for MSW v2)
+const { fetch, Request, Response, Headers, FormData } = require('undici');
+
+global.fetch = fetch;
+global.Request = Request;
+global.Response = Response;
+global.Headers = Headers;
+global.FormData = FormData;
+
+if (typeof window !== 'undefined') {
+  (window as any).fetch = fetch;
+  (window as any).Request = Request;
+  (window as any).Response = Response;
+  (window as any).Headers = Headers;
+  (window as any).FormData = FormData;
 }
-if (typeof global.TransformStream === 'undefined') {
-  // @ts-ignore
-  global.TransformStream = TransformStream;
-}
+
 

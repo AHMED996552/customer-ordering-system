@@ -72,24 +72,23 @@ class OrderingSystemDB:
                     FOREIGN KEY (cart_id) REFERENCES Carts(cart_id)
                 )
             """)
-            # 6. Users Table (UC-6: Register / UC-7: Authenticate)
+            # 6. Users Table (Authentication / Account Guarding)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS Users (
-                    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id            TEXT UNIQUE NOT NULL,
-                    email              TEXT UNIQUE NOT NULL,
-                    password_hash      TEXT NOT NULL,
-                    full_name          TEXT NOT NULL,
-                    phone_number       TEXT,
-                    status             TEXT DEFAULT 'PENDING_VERIFICATION',
-                    failed_attempts    INTEGER DEFAULT 0,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT UNIQUE NOT NULL,
+                    email TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    full_name TEXT NOT NULL,
+                    phone_number TEXT,
+                    status TEXT DEFAULT 'PENDING_VERIFICATION',
+                    failed_attempts INTEGER DEFAULT 0,
                     lockout_expires_at DATETIME,
-                    created_at         TEXT NOT NULL,
-                    otp_code           TEXT,
-                    otp_expires_at     TEXT
+                    created_at TEXT NOT NULL,
+                    otp_code TEXT,
+                    otp_expires_at TEXT
                 )
             """)
-
             conn.commit()
             print("DBA Trace: Database initialized with core padlocks.")
 
@@ -134,6 +133,24 @@ class OrderingSystemDB:
                 INSERT INTO CartItems (cart_id, item_id, quantity, unit_price_at_addition)
                 VALUES (?, ?, ?, ?)
             """, (cart_id, item_id, quantity, price))
+
+            # 6. Users Table (Authentication / Account Guarding)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS Users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT UNIQUE NOT NULL,
+                    email TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    full_name TEXT NOT NULL,
+                    phone_number TEXT,
+                    status TEXT DEFAULT 'PENDING_VERIFICATION',
+                    failed_attempts INTEGER DEFAULT 0,
+                    lockout_expires_at DATETIME,
+                    created_at TEXT NOT NULL,
+                    otp_code TEXT,
+                    otp_expires_at TEXT
+                )
+            """)
             
             conn.commit()
             print(f"DBA Trace: Item {item_id} added to Cart {cart_id} successfully.")
