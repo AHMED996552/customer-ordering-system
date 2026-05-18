@@ -16,8 +16,10 @@ export interface RestaurantCatalogResponse {
   server_utc_time_at_request: string;
 }
 
+const API_BASE = process.env.REACT_APP_API_BASE ?? 'http://localhost:5000';
+
 export async function fetchRestaurants(): Promise<RestaurantCatalogResponse> {
-  const response = await fetch('http://localhost:5000/api/v1/restaurants');
+  const response = await fetch(`${API_BASE}/api/v1/restaurants`);
 
   if (!response.ok) {
     throw new Error('Failed to fetch restaurants');
