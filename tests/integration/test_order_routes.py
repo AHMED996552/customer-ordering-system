@@ -141,3 +141,44 @@ def test_scenario_5_authorization_guard_direct_lookup(auth_client_usr1, mock_db_
         
         assert data["error"]["code"] == "ORDER_ACCESS_DENIED"
         assert "restaurant_name" not in data # Verify no data leaks
+
+
+def test_scenario_6_successful_order_retrieval(auth_client_usr1, mock_db_orders):
+    """
+    Scenario 6: Happy Path - successfully retrieve an owned order by ID
+      Given the user is authenticated as "USR-00001"
+      When the user navigates to "/api/v1/orders/ORD-20260510-001"
+      Then the server shall respond with HTTP 200 OK
+      And the response shall contain the order fields matching the user.
+    """
+    mock_order = [o for o in mock_db_orders if o["order_id"] == "ORD-20260510-001"][0]
+    
+    with patch('services.order_service.get_order_by_id', return_value=mock_order):
+        response = auth_client_usr1.get('/api/v1/orders/ORD-20260510-001')
+        
+        assert response.status_code == 200
+        data = response.get_json()
+        
+        assert data["order_id"] == "ORD-20260510-001"
+        assert data["user_id"] == "USR-00001"
+        assert "status" in data
+        assert "created_at" in data
+        assert "restaurant_name" in data
+
+
+def test_scenario_7_order_not_found(auth_client_usr1):
+    """
+    Scenario 7: Not Found - user requests a non-existent order
+      Given the user is authenticated
+      When the user navigates to "/api/v1/orders/ORD-99999999-999"
+      Then the server shall respond with HTTP 404 Not Found
+      And the error envelope contains "ORDER_NOT_FOUND"
+    """
+    with patch('services.order_service.get_order_by_id', return_value=None):
+        response = auth_client_usr1.get('/api/v1/orders/ORD-99999999-999')
+        
+        assert response.status_code == 404
+        data = response.get_json()
+        
+        assert data["error"]["code"] == "ORDER_NOT_FOUND"
+        assert "restaurant_name" not in data

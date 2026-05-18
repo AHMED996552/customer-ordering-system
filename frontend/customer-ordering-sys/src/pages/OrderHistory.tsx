@@ -364,9 +364,13 @@ function PaginationBar({ currentPage, totalPages, onPageChange }: PaginationBarP
         className={`px-6 py-3 rounded-xl text-on-surface font-bold hover:bg-surface-container-highest transition-colors border border-white/10 ${
           currentPage >= totalPages ? 'opacity-40 cursor-not-allowed' : ''
         }`}
-        onClick={() => onPageChange(currentPage + 1)}
+        onClick={() => {
+          if (currentPage >= totalPages) return;
+          onPageChange(currentPage + 1);
+        }}
         aria-label="Next Page"
         aria-disabled={currentPage >= totalPages}
+        disabled={currentPage >= totalPages}
       >
         Next →
       </button>

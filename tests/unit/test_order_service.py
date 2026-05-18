@@ -1,32 +1,10 @@
 import pytest
 import math
 
-# Assuming the logic is located in a service layer:
-# from services.order_service import OrderService
-
-class OrderService:
-    """Mock implementation of the service layer for testing unit logic independently."""
-    @staticmethod
-    def process_order_history(user_id, raw_orders, page=1, limit=10):
-        user_orders = [o for o in raw_orders if o['user_id'] == user_id]
-        sorted_orders = sorted(user_orders, key=lambda x: x['created_at'], reverse=True)
-        
-        total_count = len(sorted_orders)
-        total_pages = math.ceil(total_count / limit) if limit > 0 else 1
-        
-        start_idx = (page - 1) * limit
-        end_idx = start_idx + limit
-        paginated_orders = sorted_orders[start_idx:end_idx]
-        
-        return {
-            "orders": paginated_orders,
-            "pagination": {
-                "page": page,
-                "limit": limit,
-                "total_count": total_count,
-                "total_pages": total_pages
-            }
-        }
+from backend.services.order_service import (
+    OrderService,
+    OrderNotFoundError
+)
 
 def test_filtering_and_sorting_logic(mock_db_orders):
     """

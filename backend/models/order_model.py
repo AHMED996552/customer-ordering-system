@@ -18,6 +18,7 @@ def get_orders_from_db():
         query = """
             SELECT 
                 o.order_id,
+                o.user_id,
                 r.name AS restaurant_name,
                 o.created_at,
                 GROUP_CONCAT(m.name || ' x' || ci.quantity, ', ') AS item_summary,
@@ -37,11 +38,12 @@ def get_orders_from_db():
         for row in rows:
             orders.append({
                 "order_id": f"ORD-{row[0]}",
-                "restaurant_name": row[1],
-                "created_at": row[2],
-                "item_summary": row[3],
-                "total_egp": float(row[4]),
-                "status": row[5]
+                "user_id": row[1],
+                "restaurant_name": row[2],
+                "created_at": row[3],
+                "item_summary": row[4],
+                "total_egp": float(row[5]),
+                "status": row[6]
             })
         return orders
     except Exception as e:
@@ -65,6 +67,7 @@ def get_order_by_id(order_id):
         query = """
             SELECT 
                 o.order_id,
+                o.user_id,
                 r.name AS restaurant_name,
                 o.created_at,
                 GROUP_CONCAT(m.name || ' x' || ci.quantity, ', ') AS item_summary,
@@ -84,11 +87,12 @@ def get_order_by_id(order_id):
             
         return {
             "order_id": f"ORD-{row[0]}",
-            "restaurant_name": row[1],
-            "created_at": row[2],
-            "item_summary": row[3],
-            "total_egp": float(row[4]),
-            "status": row[5]
+            "user_id": row[1],
+            "restaurant_name": row[2],
+            "created_at": row[3],
+            "item_summary": row[4],
+            "total_egp": float(row[5]),
+            "status": row[6]
         }
     except Exception as e:
         print(f"Database error in get_order_by_id: {e}")
@@ -109,6 +113,7 @@ def fetch_user_orders_paginated(user_id, page=1, limit=10):
         query = """
             SELECT 
                 o.order_id,
+                o.user_id,
                 r.name AS restaurant_name,
                 o.created_at,
                 GROUP_CONCAT(m.name || ' x' || ci.quantity, ', ') AS item_summary,
@@ -118,22 +123,24 @@ def fetch_user_orders_paginated(user_id, page=1, limit=10):
             JOIN CartItems ci ON o.cart_id = ci.cart_id
             JOIN MenuItems m ON ci.item_id = m.item_id
             JOIN Restaurants r ON m.restaurant_id = r.restaurant_id
+            WHERE o.user_id = ?
             GROUP BY o.order_id
             ORDER BY o.created_at DESC
             LIMIT ? OFFSET ?
         """
-        cursor.execute(query, (limit, offset))
+        cursor.execute(query, (user_id, limit, offset))
         rows = cursor.fetchall()
         
         orders = []
         for row in rows:
             orders.append({
                 "order_id": f"ORD-{row[0]}",
-                "restaurant_name": row[1],
-                "created_at": row[2],
-                "item_summary": row[3],
-                "total_egp": float(row[4]),
-                "status": row[5]
+                "user_id": row[1],
+                "restaurant_name": row[2],
+                "created_at": row[3],
+                "item_summary": row[4],
+                "total_egp": float(row[5]),
+                "status": row[6]
             })
         return orders
     except Exception as e:

@@ -221,4 +221,35 @@ describe('OrderHistory Component - UC-8', () => {
       expect(button).not.toHaveAttribute('tabindex', '-1');
     });
   });
+
+  it('handles network failures gracefully', async () => {
+    jest.spyOn(global, 'fetch').mockRejectedValueOnce(new TypeError('Network error'));
+    
+    render(<OrderHistory />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('Network error')).toBeInTheDocument();
+    });
+  });
+
+  it('handles internal server errors (500) gracefully', async () => {
+    server.use(
+      rest.get('/api/v1/orders', (req, res, ctx) =>
+        res(
+          ctx.status(500),
+          ctx.json({
+            error: 'INTERNAL_SERVER_ERROR',
+            message: 'Internal server error',
+          })
+        )
+      )
+    );
+    
+    render(<OrderHistory />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('INTERNAL_SERVER_ERROR')).toBeInTheDocument();
+      expect(screen.getByText('Internal server error')).toBeInTheDocument();
+    });
+  });
 });

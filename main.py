@@ -10,10 +10,14 @@ from flask import Flask
 from routes.order_routes import order_bp
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'luxeeats_production_secret_key'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret')
 
 # Register the order routes blueprint
 app.register_blueprint(order_bp, url_prefix='/api/v1')
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(
+        host='0.0.0.0',
+        port=int(os.environ.get('PORT', 5000)),
+        debug=os.environ.get('FLASK_DEBUG') == '1'
+    )
