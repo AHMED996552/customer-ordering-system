@@ -21,3 +21,6 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Lock file — not tracked to avoid noisy diffs
+package-lock.json
