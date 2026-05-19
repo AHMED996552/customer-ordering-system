@@ -159,7 +159,7 @@ def get_all_restaurants() -> list:
         return result
 
     # 2. Production/Development: Load from SQLite Database
-    db_path = "customer_ordering_system.db"
+    db_path = current_app.config.get("DATABASE_PATH")
     try:
         if current_app:
             db_path = current_app.config.get("DATABASE_PATH") or db_path

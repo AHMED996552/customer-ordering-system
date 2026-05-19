@@ -120,7 +120,7 @@ const HomePage: React.FC = () => {
                 aria-label={r.name}
                 disabled={!r.is_open}
                 style={{ animationDelay: `${idx * 60}ms` }}
-                onClick={() => { if (r.is_open) navigate(`/restaurant/${r.restaurant_id}`); }}
+                onClick={() => { if (r.is_open) navigate(`/${r.restaurant_id}/menu`); }}
                 className={[
                   'fade-up group text-left w-full flex flex-col',
                   'bg-luxe-surface border border-white/[0.08] rounded-2xl overflow-hidden',

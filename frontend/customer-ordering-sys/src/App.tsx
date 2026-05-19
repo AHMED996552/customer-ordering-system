@@ -10,7 +10,7 @@ import HomePage from "./pages/HomePage";
 
 const RootRedirect: React.FC = () => {
   const { isAuthenticated } = useAuth();
-  return <Navigate to={isAuthenticated ? "/menu" : "/register"} replace />;
+  return <Navigate to={isAuthenticated ? "/home" : "/register"} replace />;
 };
 
 const DashboardPage: React.FC = () => {
@@ -76,7 +76,7 @@ export default function App() {
           <Route path="/verify-otp" element={<VerifyOTPPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/menu" element={<MenuPage restaurantId={"1"}/>} />
+          <Route path="/:id/menu" element={<MenuPage />} />
           <Route path="/home" element={<HomePage/>} />
           {/* Fallback to register */}
           <Route path="*" element={<Navigate to="/register" replace />} />

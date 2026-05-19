@@ -50,3 +50,26 @@ if (typeof window !== 'undefined') {
   (window as any).Headers = Headers;
   (window as any).FormData = FormData;
 }
+
+// Polyfill performance.markResourceTiming for undici in JSDOM
+if (typeof global !== 'undefined' && global.performance) {
+  (global.performance as any).markResourceTiming = (global.performance as any).markResourceTiming || (() => {});
+} else {
+  global.performance = require('node:perf_hooks').performance;
+  (global.performance as any).markResourceTiming = (() => {});
+}
+
+// Polyfill setImmediate and clearImmediate for undici/JSDOM
+global.setImmediate = global.setImmediate || ((fn: any, ...args: any[]) => setTimeout(fn, 0, ...args) as any);
+global.clearImmediate = global.clearImmediate || ((id: any) => clearTimeout(id));
+
+if (typeof window !== 'undefined') {
+  if (window.performance) {
+    (window.performance as any).markResourceTiming = (window.performance as any).markResourceTiming || (() => {});
+  } else {
+    (window as any).performance = global.performance;
+  }
+  (window as any).setImmediate = (window as any).setImmediate || global.setImmediate;
+  (window as any).clearImmediate = (window as any).clearImmediate || global.clearImmediate;
+}
+

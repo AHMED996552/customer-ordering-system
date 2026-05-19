@@ -1,4 +1,5 @@
 import React from 'react';
+import { useParams } from 'react-router-dom';
 
 interface Restaurant {
   restaurant_id: string;
@@ -53,15 +54,18 @@ const normalizeApiError = (err: unknown): ApiError => {
 };
 
 interface MenuPageProps {
-  restaurantId: string;
+  restaurantId?: string;
 }
 
-const MenuPage: React.FC<MenuPageProps> = ({ restaurantId }) => {
+const MenuPage: React.FC<MenuPageProps> = ({ restaurantId: propRestaurantId }) => {
+  const { id } = useParams<{ id: string }>();
+  const restaurantId = propRestaurantId || id;
   const [data, setData] = React.useState<MenuData | null>(null);
   const [error, setError] = React.useState<ApiError | null>(null);
   const [loading, setLoading] = React.useState<boolean>(true);
 
   React.useEffect(() => {
+    if (!restaurantId) return;
     fetch(`/api/v1/restaurants/${restaurantId}/menu`)
       .then(async (res) => {
         const json = await res.json();
