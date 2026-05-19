@@ -1,38 +1,136 @@
 """
-auth_service.py — UC-7: Authenticate User Identity
-Implements the 4-Padlock Security Chain (REQ6):
-  PADLOCK 1 — Rate Limiting / Account Lockout  (HTTP 429)
-  PADLOCK 2 — User Enumeration Guard           (HTTP 401)
-  PADLOCK 3 — Unverified Email Guard           (HTTP 403)
-  PADLOCK 4 — Happy Path                       (HTTP 200)
+auth_service.py — UC-7: Authenticate User Identity  (REQ6)
 
-Schema (aligned with UC-6 teammate's Users table):
-  id                 INTEGER PRIMARY KEY AUTOINCREMENT   ← internal row PK
-  user_id            TEXT UNIQUE NOT NULL                ← external UUID identifier
+Implements the 4-Padlock Security Chain:
+  PADLOCK 1 — Rate Limiting / Account Lockout  → HTTP 429
+  PADLOCK 2 — User Enumeration Guard           → HTTP 401
+  PADLOCK 3 — Unverified / Inactive Account    → HTTP 403
+  PADLOCK 4 — Happy Path                       → HTTP 200
+
+Database schema (Users table):
+  id                 INTEGER PRIMARY KEY AUTOINCREMENT
+  user_id            TEXT UNIQUE NOT NULL          ← external UUID
   email              TEXT UNIQUE NOT NULL
   password_hash      TEXT NOT NULL
   full_name          TEXT NOT NULL
   phone_number       TEXT
   status             TEXT DEFAULT 'PENDING_VERIFICATION'
   failed_attempts    INTEGER DEFAULT 0
-  lockout_expires_at DATETIME
+  lockout_expires_at DATETIME                      ← UTC, '%Y-%m-%d %H:%M:%S'
   created_at         TEXT NOT NULL
   otp_code           TEXT
   otp_expires_at     TEXT
+
+All public functions are pure; they accept explicit parameters so that
+unit tests can exercise them WITHOUT touching a real database.
 """
 
+from __future__ import annotations
+
 import sqlite3
-import bcrypt
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+import bcrypt
+import jwt as pyjwt
+
 # ── Constants ──────────────────────────────────────────────────────────────────
-MAX_FAILED_ATTEMPTS: int = 5          # REQ6: lock after N failures
-LOCKOUT_DURATION_MINUTES: int = 15    # REQ6: lock window
-_GENERIC_AUTH_ERROR: str = "Invalid email or password."   # enumeration guard
+MAX_FAILED_ATTEMPTS: int = 5           # lock after this many consecutive failures
+LOCKOUT_DURATION_MINUTES: int = 10     # REQ6: 10-minute window
+JWT_ALGORITHM: str = "HS256"
+JWT_TTL_HOURS: int = 8
+
+# Single generic message — never reveal WHICH credential is wrong (Padlock 2)
+_GENERIC_AUTH_ERROR: str = "Invalid email or password."
 
 
-# ── Public API ─────────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# Section 1 ─ Password utilities (pure, no DB, no Flask)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def hash_password(plain: str) -> str:
+    """
+    Hash a plaintext password with bcrypt (work factor 12).
+
+    Returns the UTF-8 decoded hash string ready to be stored in the DB.
+    Raises ValueError for empty input.
+    """
+    if not plain:
+        raise ValueError("Password must not be empty.")
+    salt = bcrypt.gensalt(rounds=12)
+    hashed = bcrypt.hashpw(plain.encode("utf-8"), salt)
+    return hashed.decode("utf-8")
+
+
+def verify_password(plain: str, hashed: str) -> bool:
+    """
+    Constant-time comparison of *plain* against the stored bcrypt *hashed* string.
+
+    Returns True if they match, False otherwise.
+    Never raises on mismatched hash — only raises if arguments are blank.
+    """
+    if not plain or not hashed:
+        return False
+    try:
+        return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
+    except Exception:
+        return False
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Section 2 ─ JWT utilities (pure, no DB, no Flask)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def generate_jwt(payload: dict, secret: str) -> str:
+    """
+    Sign *payload* with HMAC-SHA256 and return the encoded JWT string.
+
+    The caller is responsible for adding 'exp'/'iat' claims.
+    Raises ValueError when *secret* is falsy.
+    """
+    if not secret:
+        raise ValueError("JWT secret must not be empty.")
+    return pyjwt.encode(payload, secret, algorithm=JWT_ALGORITHM)
+
+
+def decode_jwt(token: str, secret: str) -> dict:
+    """
+    Validate and decode a JWT string.
+
+    Returns the decoded payload dict on success.
+    Raises:
+        jwt.ExpiredSignatureError  — token has expired
+        jwt.InvalidTokenError      — any other validation failure
+        ValueError                 — blank token or secret
+    """
+    if not token or not secret:
+        raise ValueError("Token and secret must not be empty.")
+    return pyjwt.decode(token, secret, algorithms=[JWT_ALGORITHM])
+
+
+def build_token_payload(user: dict) -> dict:
+    """
+    Construct the standard JWT claims dict for a successfully authenticated user.
+
+    Embeds:
+      sub  — internal integer PK (never returned to the client in JSON)
+      uid  — external TEXT UUID (safe to embed in token claims)
+      email
+      iat / exp
+    """
+    now = datetime.now(timezone.utc)
+    return {
+        "sub": str(user["id"]),    # RFC 7519 §4.1.2: sub MUST be a string
+        "uid": user["user_id"],
+        "email": user["email"],
+        "iat": now,
+        "exp": now + timedelta(hours=JWT_TTL_HOURS),
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Section 3 ─ Core authentication flow (requires DB)
+# ══════════════════════════════════════════════════════════════════════════════
 
 def authenticate_user(
     db_path: str,
@@ -40,23 +138,20 @@ def authenticate_user(
     password: str,
 ) -> dict:
     """
-    Validates credentials against the Users table.
+    Validate credentials against the Users table and enforce all 4 Padlocks.
 
-    Returns a dict:
+    Returns:
         { "id": int, "user_id": str, "email": str, "full_name": str }
 
     Raises:
-        _AuthServiceError(429) — account temporarily locked (rate limit)
-        _AuthServiceError(401) — bad credentials (enumeration-safe)
-        _AuthServiceError(403) — account not active / email unverified
+        _AuthServiceError(429) — account temporarily locked  (Padlock 1)
+        _AuthServiceError(401) — bad credentials             (Padlock 2)
+        _AuthServiceError(403) — account not ACTIVE          (Padlock 3)
     """
     conn = _get_conn(db_path)
     try:
         cursor = conn.cursor()
 
-        # ── Fetch user row ────────────────────────────────────────────────────
-        # Select both `id` (internal PK used for UPDATE) and `user_id` (TEXT
-        # UUID exposed to the client) per the new shared schema.
         cursor.execute(
             """
             SELECT id, user_id, email, password_hash, full_name,
@@ -68,9 +163,10 @@ def authenticate_user(
         )
         row = cursor.fetchone()
 
-        # ── PADLOCK 1: Rate Limit (must run BEFORE password check) ────────────
-        # Check lockout on the found row; if no row exists we return a generic
-        # 401 (not 429) to avoid enumeration via status codes.
+        # ── PADLOCK 1: Rate Limit ─────────────────────────────────────────────
+        # Must run BEFORE the password check so a locked account stays locked
+        # even when the correct password is eventually supplied.
+        # We only check if the row exists; a missing email always yields 401.
         if row:
             (row_id, user_id, db_email, password_hash, full_name,
              status, failed_attempts, lockout_expires_at) = row
@@ -78,29 +174,25 @@ def authenticate_user(
             if lockout_expires_at:
                 lockout_dt = _parse_dt(lockout_expires_at)
                 if lockout_dt and datetime.now(timezone.utc) < lockout_dt:
-                    remaining = int(
-                        (lockout_dt - datetime.now(timezone.utc)).total_seconds() / 60
-                    ) + 1
+                    remaining = (
+                        int((lockout_dt - datetime.now(timezone.utc)).total_seconds() / 60) + 1
+                    )
                     raise _rate_limit_error(
                         f"Too many failed attempts. "
                         f"Account locked for ~{remaining} more minute(s)."
                     )
 
         # ── PADLOCK 2: User Enumeration Guard ─────────────────────────────────
+        # Unknown e-mail → same generic 401 as wrong password
         if not row:
             raise _auth_error()
 
         (row_id, user_id, db_email, password_hash, full_name,
          status, failed_attempts, lockout_expires_at) = row
 
-        # Constant-time password check
-        password_valid = bcrypt.checkpw(
-            password.encode("utf-8"),
-            password_hash.encode("utf-8"),
-        )
+        password_valid = verify_password(password, password_hash)
 
         if not password_valid:
-            # Increment failed_attempts and maybe lock — use internal `id`
             _record_failed_attempt(conn, row_id, failed_attempts)
             conn.commit()
             raise _auth_error()
@@ -112,7 +204,7 @@ def authenticate_user(
                 "Please verify your email or contact support."
             )
 
-        # ── PADLOCK 4: Happy Path — reset counters and return payload ─────────
+        # ── PADLOCK 4: Happy Path ─────────────────────────────────────────────
         cursor.execute(
             """
             UPDATE Users
@@ -124,8 +216,8 @@ def authenticate_user(
         conn.commit()
 
         return {
-            "id": row_id,           # internal integer PK (used for JWT sub)
-            "user_id": user_id,     # external TEXT UUID exposed to client
+            "id": row_id,
+            "user_id": user_id,
             "email": db_email,
             "full_name": full_name,
         }
@@ -134,7 +226,9 @@ def authenticate_user(
         conn.close()
 
 
-# ── Helpers ────────────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# Section 4 ─ Internal helpers
+# ══════════════════════════════════════════════════════════════════════════════
 
 def _get_conn(db_path: str) -> sqlite3.Connection:
     conn = sqlite3.connect(db_path)
@@ -145,17 +239,15 @@ def _get_conn(db_path: str) -> sqlite3.Connection:
 
 def _record_failed_attempt(
     conn: sqlite3.Connection,
-    row_id: int,            # internal `id` column — NOT the TEXT user_id
+    row_id: int,
     current_attempts: int,
 ) -> None:
-    """Increments the counter; sets lockout if threshold crossed."""
+    """Increment failed_attempts and set lockout_expires_at when threshold is hit."""
     new_attempts = current_attempts + 1
     lockout_expires_at: Optional[str] = None
 
     if new_attempts >= MAX_FAILED_ATTEMPTS:
-        lockout_dt = datetime.now(timezone.utc) + timedelta(
-            minutes=LOCKOUT_DURATION_MINUTES
-        )
+        lockout_dt = datetime.now(timezone.utc) + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
         lockout_expires_at = lockout_dt.strftime("%Y-%m-%d %H:%M:%S")
 
     conn.execute(
@@ -169,21 +261,23 @@ def _record_failed_attempt(
 
 
 def _parse_dt(value: str) -> Optional[datetime]:
-    """Parses a naive UTC datetime string and returns an aware datetime."""
+    """Parse a '%Y-%m-%d %H:%M:%S' UTC string → timezone-aware datetime."""
     if not value:
         return None
-    try:
-        dt = datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
-        return dt.replace(tzinfo=timezone.utc)
-    except ValueError:
-        return None
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S"):
+        try:
+            return datetime.strptime(value, fmt).replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+    return None
 
 
-# Exception factories keep HTTP semantics out of this layer while still
-# letting the route layer distinguish the four cases by a status_code attr.
+# ── Exception hierarchy ────────────────────────────────────────────────────────
 
 class _AuthServiceError(Exception):
-    def __init__(self, message: str, status_code: int):
+    """Carries an HTTP status code so the route layer can map it directly."""
+
+    def __init__(self, message: str, status_code: int) -> None:
         super().__init__(message)
         self.status_code = status_code
 
@@ -198,10 +292,3 @@ def _auth_error() -> _AuthServiceError:
 
 def _forbidden_error(msg: str) -> _AuthServiceError:
     return _AuthServiceError(msg, 403)
-
-
-# ── Utility for tests / UC-6 (Register) to create users ──────────────────────
-
-def hash_password(plain: str) -> str:
-    """Returns a bcrypt hash string ready to store in password_hash column."""
-    return bcrypt.hashpw(plain.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
